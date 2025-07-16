@@ -1,0 +1,11 @@
+    }\;
+
+    Asset load(const std::string& path) {
+        frozen::string frozen_path(path)\; // unavoidable copy
+        return asset_map.at(frozen_path)\;
+    }
+    bool exists(const std::string& path) {
+        frozen::string frozen_path(path)\; // unavoidable copy
+        return asset_map.contains(frozen_path)\;
+    }
+}
