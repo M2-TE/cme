@@ -1,11 +1,14 @@
     }\;
 
-    Asset load(const std::string& path) {
-        frozen::string frozen_path(path)\; // unavoidable copy
-        return asset_map.at(frozen_path)\;
+    auto load(const std::string_view path) -> Asset {
+        return asset_map.at(path)\;
     }
-    bool exists(const std::string& path) {
-        frozen::string frozen_path(path)\; // unavoidable copy
-        return asset_map.contains(frozen_path)\;
+    auto try_load(const std::string_view path) noexcept -> std::pair<Asset, bool> {
+        auto it = asset_map.find(path)\;
+        if (it == asset_map.cend()) return {{}, false}\;
+        else return { it->second, true }\;
+    }
+    auto exists(const std::string_view path) noexcept -> bool {
+        return asset_map.contains(path)\;
     }
 }

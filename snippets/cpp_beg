@@ -1,7 +1,5 @@
 #include <frozen/unordered_map.h>
 #include <frozen/string.h>
 #include <cme/cme.hpp>
-#include <cme/cme.h>
 
 namespace cme {
-    // cannot be constexpr when using C #embed, gotta wait for C++ implementation
