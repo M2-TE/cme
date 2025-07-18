@@ -79,8 +79,8 @@ if (CME_BUILD_CPP)
     file(APPEND ${CME_SOURCE_CPP} ${CME_SOURCE_CPP_END})
 endif()
 
+# create C library for storing the assets
 if (CME_BUILD_C)
-    # create C library for storing the assets
     add_library(cme_c SHARED ${CME_SOURCE_C})
     add_library(cme::c ALIAS cme_c)
     target_compile_features(cme_c PRIVATE c_std_23)
@@ -90,13 +90,19 @@ endif()
 
 # create C++ library for convenient asset loading
 if (CME_BUILD_CPP)
-    include(FetchContent)
-    FetchContent_Declare(frozen
-        GIT_REPOSITORY "https://github.com/serge-sans-paille/frozen.git"
-        GIT_TAG "1.2.0"
-        GIT_SHALLOW ON
-        SOURCE_SUBDIR "disabled")
-    FetchContent_MakeAvailable(frozen)
+    # use frozen for perfect hashing
+    find_package(frozen QUIET)
+    if (NOT frozen_FOUND)
+        include(FetchContent)
+        FetchContent_Declare(frozen
+            GIT_REPOSITORY "https://github.com/serge-sans-paille/frozen.git"
+            GIT_TAG "1.2.0"
+            GIT_SHALLOW ON
+            SOURCE_SUBDIR "disabled")
+        FetchContent_MakeAvailable(frozen)
+    endif()
+    
+    # create library
     add_library(cme_cpp SHARED ${CME_SOURCE_CPP})
     add_library(cme::cpp ALIAS cme_cpp)
     target_compile_features(cme_cpp PRIVATE cxx_std_20)
