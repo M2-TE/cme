@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.25)
 project(cme LANGUAGES C CXX)
 
-option(CME_BUILD_TESTS_C   "Build the C CME tests" ON) # TODO: set to OFF
-option(CME_BUILD_TESTS_CXX "Build the CXX CME tests" ON) # TODO: set to OFF
+option(CME_BUILD_TESTS_C   "Build the C CME tests" OFF)
+option(CME_BUILD_TESTS_CXX "Build the CXX CME tests" OFF)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake")
 
 # some WIP tests
