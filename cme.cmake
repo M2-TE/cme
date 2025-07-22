@@ -150,7 +150,7 @@ if ((DEFINED CME_NAME) AND (CME_TYPE STREQUAL "STATIC" OR CME_TYPE STREQUAL "SHA
 #include <cstdint>
 #include <string_view>
 
-namespace ${CME_NAME} {
+namespace cme {
     struct Asset {
         // TODO: ALIGNMENT??
         // TODO: span?
@@ -166,11 +166,13 @@ namespace ${CME_NAME} {
         const uint8_t* _data;
         const uint64_t _size;
     };
+}
 
+namespace ${CME_NAME} {
     // load an embedded asset
-    auto load(const std::string_view path) -> Asset;
+    auto load(const std::string_view path) -> cme::Asset;
     // load an embedded asset if it exists
-    auto try_load(const std::string_view path) noexcept -> std::pair<Asset, bool>;
+    auto try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool>;
     // check if the path points to an embedded asset
     auto exists(const std::string_view path) noexcept -> bool;
 }\n")
@@ -203,7 +205,7 @@ namespace ${CME_NAME} {
         # add lookup map entry to C++ source
         if (CME_CXX)
             list(LENGTH CME_ASSET_FILES CME_ASSET_FILES_COUNT)
-            file(APPEND ${CME_CXX_SOURCE_FILE} "\n\tconstexpr frozen::unordered_map<frozen::string, Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} "\n\tconstexpr frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
             foreach (ASSET_PATH_FULL ${CME_ASSET_FILES})
                 # get shortened path relative to shader directory root
                 cmake_path(RELATIVE_PATH ASSET_PATH_FULL BASE_DIRECTORY ${CME_BASE_DIR} OUTPUT_VARIABLE ASSET_PATH_RELATIVE)
@@ -216,10 +218,10 @@ namespace ${CME_NAME} {
             file(APPEND ${CME_CXX_SOURCE_FILE}
 "\t};
 
-    auto load(const std::string_view path) -> Asset {
+    auto load(const std::string_view path) -> cme::Asset {
         return asset_map.at(path);
     }
-    auto try_load(const std::string_view path) noexcept -> std::pair<Asset, bool> {
+    auto try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {
         auto it = asset_map.find(path);
         if (it == asset_map.cend()) return {{}, false};
         else return { it->second, true };
