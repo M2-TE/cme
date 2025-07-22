@@ -17,10 +17,12 @@ function(cme_create_library CME_NAME)
     # Arg: library type
     if (CME_STATIC AND CME_SHARED)
         message(FATAL_ERROR "CME: Asset library cannot be both STATIC and SHARED")
-    elseif (CME_STATIC)
+    elseif (DEFINED CME_STATIC)
         set(CME_TYPE STATIC)
     elseif (DEFINED CME_SHARED)
         set(CME_TYPE SHARED)
+    else()
+        set(CME_TYPE STATIC)
     endif()
 
     # Arg: enabled languages
