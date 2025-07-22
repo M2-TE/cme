@@ -52,19 +52,25 @@ function(cme_create_library CME_NAME)
     # execute custom command, running this .cmake script with set variables
     # creates cme_* and cme::* libraries with dependency on generated source file
     if (CME_C AND CME_CXX)
+            set(CME_C_SOURCE_FILE   "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
+            set(CME_C_HEADER_FILE   "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
+            set(CME_CXX_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
+            set(CME_CXX_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
         add_custom_command(
-            OUTPUT  ${CME_SOURCE_C} ${CME_HEADER_C} ${CME_SOURCE_CPP} ${CME_HEADER_HPP}
+            OUTPUT  ${CME_C_SOURCE_FILE} ${CME_C_HEADER_FILE} ${CME_CXX_SOURCE_FILE} ${CME_CXX_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
             COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
-            COMMENT "CME: Generating C and CXX asset libraries cme::${CME_NAME}")
-        message("C AND CXX")
+            COMMENT "Generating C and C++ asset library cme::${CME_NAME}")
+        add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_C_SOURCE_FILE} ${CME_CXX_SOURCE_FILE})
     elseif (CME_C)
+        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
+        set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
         add_custom_command(
-            OUTPUT  ${CME_SOURCE_C} ${CME_HEADER_C} 
+            OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
             COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
-            COMMENT "CME: Generating C asset library cme::${CME_NAME}")
-        message("C")
+            COMMENT "Generating C asset library cme::${CME_NAME}")
+        add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     elseif (CME_CXX)
         set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
         set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
@@ -72,31 +78,56 @@ function(cme_create_library CME_NAME)
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
             COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
-            COMMENT "CME: Generating C++ asset library cme::${CME_NAME}")
-
+            COMMENT "Generating C++ asset library cme::${CME_NAME}")
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
-        add_library(cme::${CME_NAME} ALIAS cme_${CME_NAME})
-        target_include_directories(cme_${CME_NAME} PUBLIC ${CME_INCLUDE_DIR})
-        # suppress warnings about #embed being a C extension
+    endif()
+
+    if (CME_C)
+        # enforce C23 for #embed
+        target_compile_features(cme_${CME_NAME} PRIVATE c_std_23)
+    endif()
+    if (CME_CXX)
+        # enforce C++14 for frozen
+        target_compile_features(cme_${CME_NAME} PRIVATE cxx_std_14)
+        # suppress warnings about #embed being a C23 extension
         if (MSVC)
             target_compile_options(cme_${CME_NAME} PRIVATE "/W0") # TODO: there should be a specific flag for it
         else()
             target_compile_options(cme_${CME_NAME} PRIVATE "-Wno-c23-extensions")
         endif()
+         # use frozen for perfect hashing
+        find_package(frozen QUIET)
+        if (NOT frozen_FOUND)
+            include(FetchContent)
+            FetchContent_Declare(frozen
+                GIT_REPOSITORY "https://github.com/serge-sans-paille/frozen.git"
+                GIT_TAG "1.2.0"
+                GIT_SHALLOW ON
+                SOURCE_SUBDIR "disabled")
+            FetchContent_MakeAvailable(frozen)
+        endif()
+        target_include_directories(cme_${CME_NAME} SYSTEM PRIVATE "${frozen_SOURCE_DIR}/include")
     endif()
+
+    # finalize library target
+    add_library(cme::${CME_NAME} ALIAS cme_${CME_NAME})
+    target_include_directories(cme_${CME_NAME} PUBLIC ${CME_INCLUDE_DIR})
 endfunction()
 
+# if script was run by cme_create_library(), create the asset library files
 if ((DEFINED CME_NAME) AND (CME_TYPE STREQUAL "STATIC" OR CME_TYPE STREQUAL "SHARED") AND (CME_C OR CME_CXX) AND (DEFINED CME_BASE_DIR))
     # work in an isolated space
     block()
+        set(CME_C_SOURCE_FILE   "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
+        set(CME_C_HEADER_FILE   "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
         set(CME_CXX_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
         set(CME_CXX_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
 
         # create the header and source files
         if (CME_C)
-            # file(MAKE_DIRECTORY "${CME_INCLUDE_DIR}/cme")
-            # file(WRITE ${CME_SOURCE_C} "#include <stdint.h>\n")
-            # file(WRITE ${CME_HEADER_C} "#pragma once\n#include <stdint.h>\n")
+            file(MAKE_DIRECTORY "${CME_INCLUDE_DIR}/cme")
+            file(WRITE ${CME_C_SOURCE_FILE} "#include <stdint.h>\n")
+            file(WRITE ${CME_C_HEADER_FILE} "#pragma once\n#include <stdint.h>\n")
         endif()
         if (CME_CXX)
             # .cpp
@@ -145,12 +176,12 @@ namespace cme {
             string(MAKE_C_IDENTIFIER ${ASSET_PATH_RELATIVE} ASSET_NAME)
 
             if (CME_C)
-                # # add definition to C source
-                # file(APPEND ${CME_SOURCE_C} "const uint8_t  ${ASSET_NAME}[] = {\n\t#embed \"${ASSET_PATH_FULL}\"\n};\n")
-                # file(APPEND ${CME_SOURCE_C} "const uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
-                # # add declaration to C header
-                # file(APPEND ${CME_HEADER_C} "extern const uint8_t* ${ASSET_NAME};\n")
-                # file(APPEND ${CME_HEADER_C} "extern const uint64_t ${ASSET_NAME}_size;\n")
+                # add definition to C source
+                file(APPEND ${CME_C_SOURCE_FILE} "const uint8_t  ${ASSET_NAME}[] = {\n\t#embed \"${ASSET_PATH_FULL}\"\n};\n")
+                file(APPEND ${CME_C_SOURCE_FILE} "const uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
+                # add declaration to C header
+                file(APPEND ${CME_C_HEADER_FILE} "extern const uint8_t* ${ASSET_NAME};\n")
+                file(APPEND ${CME_C_HEADER_FILE} "extern const uint64_t ${ASSET_NAME}_size;\n")
             endif()
 
             if (CME_CXX)
