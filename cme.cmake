@@ -14,6 +14,13 @@ function(cme_create_library CME_NAME)
         message(FATAL_ERROR "CME: Unknown arguments (${CME_UNPARSED_ARGUMENTS})")
     endif()
 
+    # Arg: asset library name
+    set(CME_VALID_CHARS "^[a-zA-Z_][a-zA-Z0-9_]*[^!-\/:-@[-`{-~]$")
+    if (NOT ${CME_NAME} MATCHES ${CME_VALID_CHARS})
+        message(FATAL_ERROR "CME: Library name (${CME_NAME}) contains invalid characters")
+    endif()
+    set(CME_NAME ${CME_NAME})
+
     # Arg: library type
     if (CME_STATIC AND CME_SHARED)
         message(FATAL_ERROR "CME: Asset library cannot be both STATIC and SHARED")
@@ -22,20 +29,15 @@ function(cme_create_library CME_NAME)
     elseif (DEFINED CME_SHARED)
         set(CME_TYPE SHARED)
     else()
+        # static by default
         set(CME_TYPE STATIC)
     endif()
 
     # Arg: enabled languages
     if (NOT CME_C AND NOT CME_CXX)
+        # cxx by default
         set(CME_CXX ON)
     endif()
-
-    # Arg: asset library name
-    set(CME_VALID_CHARS "^[a-zA-Z_][a-zA-Z0-9_]*[^!-\/:-@[-`{-~]$")
-    if (NOT ${CME_NAME} MATCHES ${CME_VALID_CHARS})
-        message(FATAL_ERROR "CME: Library name (${CME_NAME}) contains invalid characters")
-    endif()
-    set(CME_NAME ${CME_NAME})
 
     # Arg: base asset directory
     if (NOT DEFINED CME_BASE_DIR)
@@ -46,7 +48,6 @@ function(cme_create_library CME_NAME)
 
     # need to glob all files before lib creation to build dependency graph
     file(GLOB_RECURSE CME_ASSET_FILES CONFIGURE_DEPENDS "${CME_BASE_DIR}/*")
-
 
     # check for CODEGEN support
     set(CME_CODEGEN_ARG "")
