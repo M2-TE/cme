@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
 
-# for CODEGEN
-# cmake_policy(SET CMP0171 NEW)
-
 # set up the locations for generated files
 set(CME_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/src")
 set(CME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/include")
@@ -48,7 +45,14 @@ function(cme_create_library CME_NAME)
     # need to glob all files before lib creation to build dependency graph
     file(GLOB_RECURSE CME_ASSET_FILES CONFIGURE_DEPENDS "${CME_BASE_DIR}/*")
 
-    # TODO: CODEGEN
+
+    # check for CODEGEN support
+    set(CME_CODEGEN_ARG "")
+    if (CMAKE_VERSION GREATER_EQUAL "3.31")
+        cmake_policy(SET CMP0171 NEW)
+        set(CME_CODEGEN_ARG CODEGEN)
+    endif()
+
     # execute custom command, running this .cmake script with set variables
     # creates cme_* and cme::* libraries with dependency on generated source file
     if (CME_C AND CME_CXX)
@@ -60,7 +64,8 @@ function(cme_create_library CME_NAME)
             OUTPUT  ${CME_C_SOURCE_FILE} ${CME_C_HEADER_FILE} ${CME_CXX_SOURCE_FILE} ${CME_CXX_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
             COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
-            COMMENT "Generating C and C++ asset library cme::${CME_NAME}")
+            COMMENT "Generating C and C++ asset library cme::${CME_NAME}"
+            ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_C_SOURCE_FILE} ${CME_CXX_SOURCE_FILE})
     elseif (CME_C)
         set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
@@ -69,7 +74,8 @@ function(cme_create_library CME_NAME)
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
             COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
-            COMMENT "Generating C asset library cme::${CME_NAME}")
+            COMMENT "Generating C asset library cme::${CME_NAME}"
+            ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     elseif (CME_CXX)
         set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
@@ -78,7 +84,8 @@ function(cme_create_library CME_NAME)
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
             COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
-            COMMENT "Generating C++ asset library cme::${CME_NAME}")
+            COMMENT "Generating C++ asset library cme::${CME_NAME}"
+            ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     endif()
 
