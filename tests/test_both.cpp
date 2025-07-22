@@ -1,8 +1,8 @@
 #include <iostream>
-#include "cme/cxx_assets.hpp"
+#include "cme/both_assets.hpp"
 
 int main() {
-    auto asset = cme::load("subfolder/stuff.txt");
+    auto asset = both_assets::load("subfolder/stuff.txt");
     std::cout << asset._size << std::endl;
     return 0;
 }

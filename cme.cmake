@@ -89,12 +89,14 @@ function(cme_create_library CME_NAME)
     if (CME_CXX)
         # enforce C++14 for frozen
         target_compile_features(cme_${CME_NAME} PRIVATE cxx_std_14)
+
         # suppress warnings about #embed being a C23 extension
         if (MSVC)
             target_compile_options(cme_${CME_NAME} PRIVATE "/W0") # TODO: there should be a specific flag for it
         else()
             target_compile_options(cme_${CME_NAME} PRIVATE "-Wno-c23-extensions")
         endif()
+
          # use frozen for perfect hashing
         find_package(frozen QUIET)
         if (NOT frozen_FOUND)
@@ -134,14 +136,14 @@ if ((DEFINED CME_NAME) AND (CME_TYPE STREQUAL "STATIC" OR CME_TYPE STREQUAL "SHA
             file(WRITE ${CME_CXX_SOURCE_FILE} "#include <frozen/unordered_map.h>\n")
             file(APPEND ${CME_CXX_SOURCE_FILE} "#include <frozen/string.h>\n")
             file(APPEND ${CME_CXX_SOURCE_FILE} "#include <cme/${CME_NAME}.hpp>\n")
-            file(APPEND ${CME_CXX_SOURCE_FILE} "\nnamespace cme {\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} "\nnamespace ${CME_NAME} {\n")
             # .hpp
             file(WRITE ${CME_CXX_HEADER_FILE} 
 "#pragma once
 #include <cstdint>
 #include <string_view>
 
-namespace cme {
+namespace ${CME_NAME} {
     struct Asset {
         // TODO: ALIGNMENT??
         // TODO: span?
