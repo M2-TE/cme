@@ -1,5 +1,5 @@
 #include <iostream>
-#include "cme/cme.hpp"
+#include "cme/assets.hpp"
 
 int main() {
     auto asset = cme::load("subfolder/stuff.txt");
