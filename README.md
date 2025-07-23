@@ -1,6 +1,6 @@
 # CMake Embedder
 Single `cme.cmake` script that embeds all assets within a certain directory into a C/C++ library using the #embed directive, despite the latter currently lacking official implementation.
-In C++, the assets can be loaded at runtime using relative paths, as if loading from disk.
+In C++, the assets can be loaded at runtime (default) or compile-time using relative paths, as if loading from disk.
 
 Tested with `gcc 15` and `Clang 20`, earlier compiler versions probably won't recognize #embed.
 
@@ -24,6 +24,7 @@ Once included, simply use the `cme_create_library` function to create your asset
 ```cmake
 cme_create_library(
     assets # name of your asset library (affects CMake target name and C++ namespace)
+    CONSTEXPR # allows compile-time loading of assets, but places data into the header
     STATIC # [STATIC, SHARED] # may only choose one
     CXX    # [C, CXX]         # can use both simultaneously, CXX by default if omitted
     BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets") # directory containing all your assets
@@ -35,7 +36,7 @@ target_link_libraries(your_library PRIVATE cme::assets) # target will be cme:: a
 ```cpp
 #include "cme/assets.hpp" // CXX flag always creates the *.hpp header and *.cpp source files
 int main() {
-    cme::Asset asset = assets::load("subfolder/stuff.txt");
+    static constexpr cme::Asset asset = assets::load("subfolder/stuff.txt");
 }
 ```
 #### example.c
