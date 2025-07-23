@@ -5,7 +5,7 @@ set(CME_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/src")
 set(CME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/include")
 
 function(cme_create_library CME_NAME)
-    set(args_option STATIC SHARED C CXX)
+    set(args_option STATIC SHARED C CXX CONSTEXPR)
     set(args_single BASE_DIR NAMESPACE)
     cmake_parse_arguments(CME "${args_option}" "${args_single}" "" "${ARGN}")
 
@@ -39,6 +39,13 @@ function(cme_create_library CME_NAME)
         set(CME_CXX ON)
     endif()
 
+    # Arg: constexpr
+    if (DEFINED CME_CONSTEXPR)
+        set(CME_CONSTEXPR "constexpr")
+    else()
+        set(CME_CONSTEXPR "")
+    endif()
+
     # Arg: base asset directory
     if (NOT DEFINED CME_BASE_DIR)
         message(FATAL_ERROR "CME: Requires BASE_DIR")
@@ -66,7 +73,7 @@ function(cme_create_library CME_NAME)
         add_custom_command(
             OUTPUT  ${CME_C_SOURCE_FILE} ${CME_C_HEADER_FILE} ${CME_CXX_SOURCE_FILE} ${CME_CXX_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
-            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
+            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_CXX=${CME_CXX} -DCME_CONSTEXPR=${CME_CONSTEXPR} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
             COMMENT "Generating C and C++ asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_C_SOURCE_FILE} ${CME_CXX_SOURCE_FILE})
@@ -76,7 +83,7 @@ function(cme_create_library CME_NAME)
         add_custom_command(
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
-            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
+            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_BASE_DIR=${CME_BASE_DIR} -DCME_CONSTEXPR=${CME_CONSTEXPR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
             COMMENT "Generating C asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
@@ -86,7 +93,7 @@ function(cme_create_library CME_NAME)
         add_custom_command(
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
-            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
+            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -DCME_CONSTEXPR=${CME_CONSTEXPR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
             COMMENT "Generating C++ asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
@@ -97,14 +104,21 @@ function(cme_create_library CME_NAME)
         target_compile_features(cme_${CME_NAME} PRIVATE c_std_23)
     endif()
     if (CME_CXX)
+        # needs to be PUBLIC when CONSTEXPR is used
+        if (CME_CONSTEXPR STREQUAL "constexpr")
+            set(CME_SCOPE PUBLIC)
+        else()
+            set(CME_SCOPE PRIVATE)
+        endif()
+
         # enforce C++14 for frozen
-        target_compile_features(cme_${CME_NAME} PRIVATE cxx_std_14)
+        target_compile_features(cme_${CME_NAME} ${CME_SCOPE} cxx_std_14)
 
         # suppress warnings about #embed being a C23 extension
         if (MSVC)
-            target_compile_options(cme_${CME_NAME} PRIVATE "/W0") # TODO: there should be a specific flag for it
+            target_compile_options(cme_${CME_NAME} ${CME_SCOPE} "/W0") # TODO: there should be a specific flag for it
         else()
-            target_compile_options(cme_${CME_NAME} PRIVATE "-Wno-c23-extensions")
+            target_compile_options(cme_${CME_NAME} ${CME_SCOPE} "-Wno-c23-extensions")
         endif()
 
          # use frozen for perfect hashing
@@ -118,7 +132,7 @@ function(cme_create_library CME_NAME)
                 SOURCE_SUBDIR "disabled")
             FetchContent_MakeAvailable(frozen)
         endif()
-        target_include_directories(cme_${CME_NAME} SYSTEM PRIVATE "${frozen_SOURCE_DIR}/include")
+        target_include_directories(cme_${CME_NAME} SYSTEM ${CME_SCOPE} "${frozen_SOURCE_DIR}/include")
     endif()
 
     # finalize library target
@@ -143,13 +157,13 @@ if ((DEFINED CME_NAME) AND (CME_TYPE STREQUAL "STATIC" OR CME_TYPE STREQUAL "SHA
 struct Asset {
     const uint8_t* _data;
     const uint64_t _size;
-};
-\n")
+};\n")
         endif()
         if (NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.hpp")
             file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.hpp"
 "#pragma once
 #include <cstdint>
+#include <utility>
 namespace cme {
     struct Asset {
         // get data as array of T instead of uint8
@@ -163,8 +177,7 @@ namespace cme {
         const uint8_t* _data;
         const uint64_t _size;
     };
-}
-\n")
+}\n")
         endif()
 
         # create the header and source files
@@ -181,17 +194,17 @@ namespace cme {
             # .hpp
             file(WRITE ${CME_CXX_HEADER_FILE} 
 "#pragma once
-#include <cstdint>
 #include <string_view>
 #include <cme/detail/asset.hpp>
+#include <${CME_CXX_SOURCE_FILE}>
 
 namespace ${CME_NAME} {
     // load an embedded asset
-    auto load(const std::string_view path) -> cme::Asset;
+    auto ${CME_CONSTEXPR} load(const std::string_view path) -> cme::Asset;
     // load an embedded asset if it exists
-    auto try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool>;
+    auto ${CME_CONSTEXPR} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool>;
     // check if the path points to an embedded asset
-    auto exists(const std::string_view path) noexcept -> bool;
+    auto ${CME_CONSTEXPR} exists(const std::string_view path) noexcept -> bool;
 }\n")
         endif()
 
@@ -235,15 +248,15 @@ namespace ${CME_NAME} {
             file(APPEND ${CME_CXX_SOURCE_FILE}
 "\t};
 
-    auto load(const std::string_view path) -> cme::Asset {
+    auto ${CME_CONSTEXPR} load(const std::string_view path) -> cme::Asset {
         return asset_map.at(path);
     }
-    auto try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {
+    auto ${CME_CONSTEXPR} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {
         auto it = asset_map.find(path);
         if (it == asset_map.cend()) return {{}, false};
         else return { it->second, true };
     }
-    auto exists(const std::string_view path) noexcept -> bool {
+    auto ${CME_CONSTEXPR} exists(const std::string_view path) noexcept -> bool {
         return asset_map.contains(path);
     }
 }\n")
