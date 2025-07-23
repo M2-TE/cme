@@ -1,4 +1,4 @@
-name: Build on Ubuntu
+name: Test on Ubuntu
 on:
   pull_request:
     branches: [ main ]

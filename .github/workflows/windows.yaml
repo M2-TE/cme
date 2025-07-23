@@ -1,0 +1,31 @@
+name: Test on Windows
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      matrix:
+        build_type: [ Debug, Release ]
+    
+    steps:
+    - name: Clone
+      uses: actions/checkout@v4
+
+    - name: Build and Test
+      run: |
+        cmake -B build                              `
+          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} `
+          -DCME_BUILD_TESTS_C=ON                    `
+          -DCME_BUILD_TESTS_CXX=ON
+        cmake --build build --parallel
+        cd build && ctest --output-on-failure
