@@ -28,7 +28,8 @@ cme_create_library(
     STATIC # [STATIC, SHARED] # may only choose one
     CXX    # [C, CXX]         # can use both simultaneously, CXX by default if omitted
     BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets") # directory containing all your assets
-target_link_libraries(your_library PRIVATE cme::assets) # target will be cme:: and the name you have chosen
+# asset library target will be cme:: and the name you have chosen
+target_link_libraries(your_library PRIVATE cme::assets)
 ```
 
 ### C/C++
