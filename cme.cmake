@@ -77,7 +77,7 @@ function(cme_create_library CME_NAME)
         add_custom_command(
             OUTPUT  ${CME_C_SOURCE_FILE} ${CME_C_HEADER_FILE} ${CME_CXX_SOURCE_FILE} ${CME_CXX_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
-            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_CXX=${CME_CXX} -DCME_CONSTEXPR=${CME_CONSTEXPR} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
+            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_CXX=${CME_CXX} -DCME_CONSTEXPR=${CME_CONSTEXPR} -DCME_BASE_DIR=${CME_BASE_DIR} -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake
             COMMENT "Generating C and C++ asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_C_SOURCE_FILE} ${CME_CXX_SOURCE_FILE})
@@ -87,7 +87,7 @@ function(cme_create_library CME_NAME)
         add_custom_command(
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
-            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_BASE_DIR=${CME_BASE_DIR} -DCME_CONSTEXPR=${CME_CONSTEXPR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
+            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_C=${CME_C} -DCME_BASE_DIR=${CME_BASE_DIR} -DCME_CONSTEXPR=${CME_CONSTEXPR} -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake
             COMMENT "Generating C asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
@@ -97,7 +97,7 @@ function(cme_create_library CME_NAME)
         add_custom_command(
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_ASSET_FILES}
-            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -DCME_CONSTEXPR=${CME_CONSTEXPR} -P ${CMAKE_CURRENT_SOURCE_DIR}/cme.cmake
+            COMMAND ${CMAKE_COMMAND} -DCME_NAME=${CME_NAME} -DCME_TYPE=${CME_TYPE} -DCME_CXX=${CME_CXX} -DCME_BASE_DIR=${CME_BASE_DIR} -DCME_CONSTEXPR=${CME_CONSTEXPR} -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake
             COMMENT "Generating C++ asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
