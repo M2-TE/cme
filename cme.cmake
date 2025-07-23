@@ -159,20 +159,16 @@ if ((DEFINED CME_NAME) AND (DEFINED CME_CONSTEXPR) AND (DEFINED CME_TYPE) AND (C
         set(CME_CXX_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
         set(CME_CXX_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
 
-        # create the headers for the Asset struct
-        if (NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.h")
-            # asset.h
-            file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.h"
+        # cme/detail/asset.h
+        set(CME_ASSET_H
 "#pragma once
 #include <stdint.h>
 struct Asset {
     const uint8_t* _data;
     const uint64_t _size;
 };\n")
-        endif()
-        if (NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.hpp")
-            # asset.hpp
-            file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.hpp"
+        # cme/detail/asset.hpp
+        set(CME_ASSET_HPP
 "#pragma once
 #include <cstdint>
 #include <utility>
@@ -190,27 +186,12 @@ namespace cme {
         const uint64_t _size;
     };
 }\n")
+        # cme/*.hpp
+        set(CME_CXX_SOURCE_INCLUSION "")
+        if (CME_CONSTEXPR STREQUAL "constexpr")
+            set(CME_CXX_SOURCE_INCLUSION "#include <${CME_CXX_SOURCE_FILE}>\n") 
         endif()
-
-        # create the header and source files
-        if (CME_C)
-            # .c
-            file(WRITE ${CME_C_SOURCE_FILE} "#include <cme/detail/asset.h>\n\n")
-            # .h
-            file(WRITE ${CME_C_HEADER_FILE} "#pragma once\n#include <cme/detail/asset.h>\n\n")
-        endif()
-        if (CME_CXX)
-            # .cpp
-            file(WRITE ${CME_CXX_SOURCE_FILE} "#include <frozen/unordered_map.h>\n")
-            file(APPEND ${CME_CXX_SOURCE_FILE} "#include <frozen/string.h>\n")
-            file(APPEND ${CME_CXX_SOURCE_FILE} "#include <cme/detail/asset.hpp>\n")
-            file(APPEND ${CME_CXX_SOURCE_FILE} "\nnamespace ${CME_NAME} {\n")
-            # .hpp
-            set(CME_CXX_SOURCE_INCLUSION "")
-            if (CME_CONSTEXPR STREQUAL "constexpr")
-                set(CME_CXX_SOURCE_INCLUSION "#include <${CME_CXX_SOURCE_FILE}>\n") 
-            endif()
-            file(WRITE ${CME_CXX_HEADER_FILE} 
+        set(CME_HPP
 "#pragma once
 #include <string_view>
 #include <cme/detail/asset.hpp>
@@ -223,6 +204,45 @@ namespace ${CME_NAME} {
     // check if the path points to an embedded asset
     auto ${CME_CONSTEXPR} exists(const std::string_view path) noexcept -> bool;
 }\n")
+        # src/*.cpp
+        set(CME_CPP
+"\t};
+
+    auto ${CME_CONSTEXPR} load(const std::string_view path) -> cme::Asset {
+        return asset_map.at(path);
+    }
+    auto ${CME_CONSTEXPR} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {
+        auto it = asset_map.find(path);
+        if (it == asset_map.cend()) return {{}, false};
+        else return { it->second, true };
+    }
+    auto ${CME_CONSTEXPR} exists(const std::string_view path) noexcept -> bool {
+        return asset_map.contains(path);
+    }
+}\n")
+        # create the headers for the Asset struct (shared by all asset libs)
+        if (CME_C   AND NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.h")
+            file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.h" ${CME_ASSET_H})
+        endif()
+        if (CME_CXX AND NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.hpp")
+            file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.hpp" ${CME_ASSET_HPP})
+        endif()
+
+        # create the header and source files
+        if (CME_C)
+            # *.c
+            file(WRITE ${CME_C_SOURCE_FILE} "#include <cme/detail/asset.h>\n\n")
+            # *.h
+            file(WRITE ${CME_C_HEADER_FILE} "#pragma once\n#include <cme/detail/asset.h>\n\n")
+        endif()
+        if (CME_CXX)
+            # *.cpp
+            file(WRITE ${CME_CXX_SOURCE_FILE} "#include <frozen/unordered_map.h>\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} "#include <frozen/string.h>\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} "#include <cme/detail/asset.hpp>\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} "\nnamespace ${CME_NAME} {\n")
+            # *.hpp
+            file(WRITE ${CME_CXX_HEADER_FILE} ${CME_HPP})
         endif()
 
         # append #embed entries to the C/C++ files
@@ -249,7 +269,7 @@ namespace ${CME_NAME} {
             endif()
         endforeach()
 
-        # add lookup map entry to C++ source
+        # add map entry to C++ source
         if (CME_CXX)
             list(LENGTH CME_ASSET_FILES CME_ASSET_FILES_COUNT)
             file(APPEND ${CME_CXX_SOURCE_FILE} "\n\tconstexpr frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
@@ -262,21 +282,7 @@ namespace ${CME_NAME} {
             endforeach()
 
             # finalize the source file
-            file(APPEND ${CME_CXX_SOURCE_FILE}
-"\t};
-
-    auto ${CME_CONSTEXPR} load(const std::string_view path) -> cme::Asset {
-        return asset_map.at(path);
-    }
-    auto ${CME_CONSTEXPR} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {
-        auto it = asset_map.find(path);
-        if (it == asset_map.cend()) return {{}, false};
-        else return { it->second, true };
-    }
-    auto ${CME_CONSTEXPR} exists(const std::string_view path) noexcept -> bool {
-        return asset_map.contains(path);
-    }
-}\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} ${CME_CPP})
         endif()
 
     endblock()
