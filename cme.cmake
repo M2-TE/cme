@@ -22,28 +22,32 @@ function(cme_create_library CME_NAME)
     set(CME_NAME ${CME_NAME})
 
     # Arg: library type
-    if (CME_STATIC AND CME_SHARED)
+    if ((CME_STATIC OR CME_SHARED) AND CME_CONSTEXPR)
+        message(FATAL_ERROR "CME: CONSTEXPR asset library cannot be STATIC or SHARED")
+    elseif (CME_STATIC AND CME_SHARED)
         message(FATAL_ERROR "CME: Asset library cannot be both STATIC and SHARED")
-    elseif (DEFINED CME_STATIC)
+    elseif(CME_CONSTEXPR)
+        set(CME_TYPE INTERFACE)
+    elseif (CME_STATIC)
         set(CME_TYPE STATIC)
-    elseif (DEFINED CME_SHARED)
+    elseif (CME_SHARED)
         set(CME_TYPE SHARED)
     else()
-        # static by default
+        # static by default when not CONSTEXPR
         set(CME_TYPE STATIC)
+    endif()
+
+    # Arg: constexpr
+    if (CME_CONSTEXPR)
+        set(CME_CONSTEXPR "constexpr")
+    else()
+        set(CME_CONSTEXPR "")
     endif()
 
     # Arg: enabled languages
     if (NOT CME_C AND NOT CME_CXX)
         # cxx by default
         set(CME_CXX ON)
-    endif()
-
-    # Arg: constexpr
-    if (DEFINED CME_CONSTEXPR)
-        set(CME_CONSTEXPR "constexpr")
-    else()
-        set(CME_CONSTEXPR "")
     endif()
 
     # Arg: base asset directory
@@ -63,8 +67,8 @@ function(cme_create_library CME_NAME)
         set(CME_CODEGEN_ARG CODEGEN)
     endif()
 
-    # execute custom command, running this .cmake script with set variables
-    # creates cme_* and cme::* libraries with dependency on generated source file
+    # execute custom command, running this cme.cmake script with set variables
+    # creates cme_* and cme::* libraries with dependency on generated files
     if (CME_C AND CME_CXX)
             set(CME_C_SOURCE_FILE   "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
             set(CME_C_HEADER_FILE   "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
@@ -99,17 +103,19 @@ function(cme_create_library CME_NAME)
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     endif()
 
+    # scope needs to be INTERFACE when CONSTEXPR is used
+    if (CME_CONSTEXPR STREQUAL "constexpr")
+        set(CME_SCOPE INTERFACE)
+    else()
+        set(CME_SCOPE PRIVATE)
+    endif()
+
+    # target settings
     if (CME_C)
         # enforce C23 for #embed
-        target_compile_features(cme_${CME_NAME} PRIVATE c_std_23)
+        target_compile_features(cme_${CME_NAME} ${CME_SCOPE} c_std_23)
     endif()
     if (CME_CXX)
-        # needs to be PUBLIC when CONSTEXPR is used
-        if (CME_CONSTEXPR STREQUAL "constexpr")
-            set(CME_SCOPE PUBLIC)
-        else()
-            set(CME_SCOPE PRIVATE)
-        endif()
 
         # enforce C++14 for frozen
         target_compile_features(cme_${CME_NAME} ${CME_SCOPE} cxx_std_14)
@@ -121,7 +127,7 @@ function(cme_create_library CME_NAME)
             target_compile_options(cme_${CME_NAME} ${CME_SCOPE} "-Wno-c23-extensions")
         endif()
 
-         # use frozen for perfect hashing
+        # use frozen for perfect hashing
         find_package(frozen QUIET)
         if (NOT frozen_FOUND)
             include(FetchContent)
@@ -136,12 +142,16 @@ function(cme_create_library CME_NAME)
     endif()
 
     # finalize library target
+    if (CME_CONSTEXPR STREQUAL "constexpr")
+        target_include_directories(cme_${CME_NAME} INTERFACE ${CME_INCLUDE_DIR})
+    else()
+        target_include_directories(cme_${CME_NAME} PUBLIC ${CME_INCLUDE_DIR})
+    endif()
     add_library(cme::${CME_NAME} ALIAS cme_${CME_NAME})
-    target_include_directories(cme_${CME_NAME} PUBLIC ${CME_INCLUDE_DIR})
 endfunction()
 
 # if script was run by cme_create_library(), create the asset library files
-if ((DEFINED CME_NAME) AND (CME_TYPE STREQUAL "STATIC" OR CME_TYPE STREQUAL "SHARED") AND (CME_C OR CME_CXX) AND (DEFINED CME_BASE_DIR))
+if ((DEFINED CME_NAME) AND (DEFINED CME_CONSTEXPR) AND (DEFINED CME_TYPE) AND (CME_C OR CME_CXX) AND (DEFINED CME_BASE_DIR))
     # work in an isolated space
     block()
         set(CME_C_SOURCE_FILE   "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
@@ -151,6 +161,7 @@ if ((DEFINED CME_NAME) AND (CME_TYPE STREQUAL "STATIC" OR CME_TYPE STREQUAL "SHA
 
         # create the headers for the Asset struct
         if (NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.h")
+            # asset.h
             file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.h"
 "#pragma once
 #include <stdint.h>
@@ -160,6 +171,7 @@ struct Asset {
 };\n")
         endif()
         if (NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.hpp")
+            # asset.hpp
             file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.hpp"
 "#pragma once
 #include <cstdint>
@@ -182,8 +194,10 @@ namespace cme {
 
         # create the header and source files
         if (CME_C)
-            file(WRITE ${CME_C_SOURCE_FILE} "#include <cme/detail/asset.h>\n")
-            file(WRITE ${CME_C_HEADER_FILE} "#pragma once\n#include <cme/detail/asset.h>\n")
+            # .c
+            file(WRITE ${CME_C_SOURCE_FILE} "#include <cme/detail/asset.h>\n\n")
+            # .h
+            file(WRITE ${CME_C_HEADER_FILE} "#pragma once\n#include <cme/detail/asset.h>\n\n")
         endif()
         if (CME_CXX)
             # .cpp
@@ -192,12 +206,15 @@ namespace cme {
             file(APPEND ${CME_CXX_SOURCE_FILE} "#include <cme/detail/asset.hpp>\n")
             file(APPEND ${CME_CXX_SOURCE_FILE} "\nnamespace ${CME_NAME} {\n")
             # .hpp
+            set(CME_CXX_SOURCE_INCLUSION "")
+            if (CME_CONSTEXPR STREQUAL "constexpr")
+                set(CME_CXX_SOURCE_INCLUSION "#include <${CME_CXX_SOURCE_FILE}>\n") 
+            endif()
             file(WRITE ${CME_CXX_HEADER_FILE} 
 "#pragma once
 #include <string_view>
 #include <cme/detail/asset.hpp>
-#include <${CME_CXX_SOURCE_FILE}>
-
+${CME_CXX_SOURCE_INCLUSION}
 namespace ${CME_NAME} {
     // load an embedded asset
     auto ${CME_CONSTEXPR} load(const std::string_view path) -> cme::Asset;

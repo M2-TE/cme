@@ -16,7 +16,7 @@ if (CME_BUILD_TESTS_CXX)
     add_executable(test_cpp "tests/test.cpp")
     target_link_libraries(test_cpp PRIVATE cme::cxx_assets)
 
-    cme_create_library(cxx_constexpr STATIC CXX CONSTEXPR BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+    cme_create_library(cxx_constexpr CONSTEXPR CXX BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
     add_executable(test_constexpr "tests/test_constexpr.cpp")
     target_link_libraries(test_constexpr PRIVATE cme::cxx_constexpr)
 endif()
