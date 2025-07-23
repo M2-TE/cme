@@ -135,32 +135,26 @@ if ((DEFINED CME_NAME) AND (CME_TYPE STREQUAL "STATIC" OR CME_TYPE STREQUAL "SHA
         set(CME_CXX_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
         set(CME_CXX_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
 
-        # create the header and source files
-        if (CME_C)
-            file(MAKE_DIRECTORY "${CME_INCLUDE_DIR}/cme")
-            file(WRITE ${CME_C_SOURCE_FILE} "#include <stdint.h>\n")
-            file(WRITE ${CME_C_HEADER_FILE} "#pragma once\n#include <stdint.h>\n")
+        # create the headers for the Asset struct
+        if (NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.h")
+            file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.h"
+"#pragma once
+#include <stdint.h>
+struct Asset {
+    const uint8_t* _data;
+    const uint64_t _size;
+};
+\n")
         endif()
-        if (CME_CXX)
-            # .cpp
-            file(WRITE ${CME_CXX_SOURCE_FILE} "#include <frozen/unordered_map.h>\n")
-            file(APPEND ${CME_CXX_SOURCE_FILE} "#include <frozen/string.h>\n")
-            file(APPEND ${CME_CXX_SOURCE_FILE} "#include <cme/${CME_NAME}.hpp>\n")
-            file(APPEND ${CME_CXX_SOURCE_FILE} "\nnamespace ${CME_NAME} {\n")
-            # .hpp
-            file(WRITE ${CME_CXX_HEADER_FILE} 
+        if (NOT EXISTS "${CME_INCLUDE_DIR}/cme/detail/asset.hpp")
+            file(WRITE "${CME_INCLUDE_DIR}/cme/detail/asset.hpp"
 "#pragma once
 #include <cstdint>
-#include <string_view>
-
 namespace cme {
     struct Asset {
-        // TODO: ALIGNMENT??
-        // TODO: span?
-
         // get data as array of T instead of uint8
         template<typename T>
-        auto get() -> std::pair<T*, uint64_t> {
+        auto get() -> std::pair<T*, uint64_t> const {
             const T* data = reinterpret_cast<const T*>(_data);
             const uint64_t size = _size / sizeof(T);
             return { data, size };
@@ -170,6 +164,26 @@ namespace cme {
         const uint64_t _size;
     };
 }
+\n")
+        endif()
+
+        # create the header and source files
+        if (CME_C)
+            file(WRITE ${CME_C_SOURCE_FILE} "#include <cme/detail/asset.h>\n")
+            file(WRITE ${CME_C_HEADER_FILE} "#pragma once\n#include <cme/detail/asset.h>\n")
+        endif()
+        if (CME_CXX)
+            # .cpp
+            file(WRITE ${CME_CXX_SOURCE_FILE} "#include <frozen/unordered_map.h>\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} "#include <frozen/string.h>\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} "#include <cme/detail/asset.hpp>\n")
+            file(APPEND ${CME_CXX_SOURCE_FILE} "\nnamespace ${CME_NAME} {\n")
+            # .hpp
+            file(WRITE ${CME_CXX_HEADER_FILE} 
+"#pragma once
+#include <cstdint>
+#include <string_view>
+#include <cme/detail/asset.hpp>
 
 namespace ${CME_NAME} {
     // load an embedded asset
