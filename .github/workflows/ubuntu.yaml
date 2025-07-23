@@ -40,4 +40,4 @@ jobs:
           -DCME_BUILD_TESTS_C=ON                    \
           -DCME_BUILD_TESTS_CXX=ON
         cmake --build build --parallel
-        ctest --output-on-failure
+        cd build && ctest --output-on-failure
