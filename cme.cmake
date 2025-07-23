@@ -164,9 +164,9 @@ if ((DEFINED CME_NAME) AND (DEFINED CME_CONSTEXPR) AND (DEFINED CME_TYPE) AND (C
 "#pragma once
 #include <stdint.h>
 struct Asset {
-    const uint8_t* _data;
-    const uint64_t _size;
-};\n")
+    const uint8_t* _data\;
+    const uint64_t _size\;
+}\;\n")
         # cme/detail/asset.hpp
         set(CME_ASSET_HPP
 "#pragma once
@@ -177,14 +177,14 @@ namespace cme {
         // get data as array of T instead of uint8
         template<typename T>
         auto get() -> std::pair<T*, uint64_t> const {
-            const T* data = reinterpret_cast<const T*>(_data);
-            const uint64_t size = _size / sizeof(T);
-            return { data, size };
+            const T* data = reinterpret_cast<const T*>(_data)\;
+            const uint64_t size = _size / sizeof(T)\;
+            return { data, size }\;
         }
 
-        const uint8_t* _data;
-        const uint64_t _size;
-    };
+        const uint8_t* _data\;
+        const uint64_t _size\;
+    }\;
 }\n")
         # cme/*.hpp
         set(CME_CXX_SOURCE_INCLUSION "")
@@ -198,26 +198,26 @@ namespace cme {
 ${CME_CXX_SOURCE_INCLUSION}
 namespace ${CME_NAME} {
     // load an embedded asset
-    auto ${CME_CONSTEXPR} load(const std::string_view path) -> cme::Asset;
+    auto ${CME_CONSTEXPR} load(const std::string_view path) -> cme::Asset\;
     // load an embedded asset if it exists
-    auto ${CME_CONSTEXPR} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool>;
+    auto ${CME_CONSTEXPR} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool>\;
     // check if the path points to an embedded asset
-    auto ${CME_CONSTEXPR} exists(const std::string_view path) noexcept -> bool;
+    auto ${CME_CONSTEXPR} exists(const std::string_view path) noexcept -> bool\;
 }\n")
         # src/*.cpp
         set(CME_CPP
-"\t};
+"\t}\;
 
     auto ${CME_CONSTEXPR} load(const std::string_view path) -> cme::Asset {
-        return asset_map.at(path);
+        return asset_map.at(path)\;
     }
     auto ${CME_CONSTEXPR} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {
-        auto it = asset_map.find(path);
-        if (it == asset_map.cend()) return {{}, false};
-        else return { it->second, true };
+        auto it = asset_map.find(path)\;
+        if (it == asset_map.cend()) return {{}, false}\;
+        else return { it->second, true }\;
     }
     auto ${CME_CONSTEXPR} exists(const std::string_view path) noexcept -> bool {
-        return asset_map.contains(path);
+        return asset_map.contains(path)\;
     }
 }\n")
         # create the headers for the Asset struct (shared by all asset libs)
@@ -234,6 +234,9 @@ namespace ${CME_NAME} {
             file(WRITE ${CME_C_SOURCE_FILE} "#include <cme/detail/asset.h>\n\n")
             # *.h
             file(WRITE ${CME_C_HEADER_FILE} "#pragma once\n#include <cme/detail/asset.h>\n\n")
+            if (CME_CONSTEXPR STREQUAL "constexpr")
+                file(WRITE ${CME_C_HEADER_FILE} "#include <${CME_C_SOURCE_FILE}>\n\n")
+            endif()
         endif()
         if (CME_CXX)
             # *.cpp
