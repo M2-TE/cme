@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        compiler: [ clang++-20 ]
+        compiler: [ 20 ]
         generator: [ Ninja, Unix Makefiles ]
         build_type: [ Debug, Release ]
     
@@ -24,20 +24,21 @@ jobs:
     - name: Clone
       uses: actions/checkout@v4
 
-    - name: Install Clang 20
+    - name: Install Clang ${{matrix.compiler}}
       run: |
         sudo apt-get update && sudo apt-get install lsb-release gpg software-properties-common
         wget https://apt.llvm.org/llvm.sh
         chmod u+x llvm.sh
-        sudo ./llvm.sh 20
+        sudo ./llvm.sh ${{matrix.compiler}}
 
     - name: Build and Test
       run: |
-        cmake -B build                              \
-          -G '${{matrix.generator}}'                \
-          -DCMAKE_CXX_COMPILER=${{matrix.compiler}} \
-          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-          -DCME_BUILD_TESTS_C=ON                    \
+        cmake -B build                                      \
+          -G '${{matrix.generator}}'                        \
+          -DCMAKE_CXX_COMPILER=clang-${{matrix.compiler}}   \
+          -DCMAKE_CXX_COMPILER=clang++-${{matrix.compiler}} \
+          -DCMAKE_BUILD_TYPE=${{matrix.build_type}}         \
+          -DCME_BUILD_TESTS_C=ON                            \
           -DCME_BUILD_TESTS_CXX=ON
         cmake --build build --parallel
         cd build && ctest --output-on-failure
