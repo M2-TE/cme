@@ -35,7 +35,7 @@ jobs:
       run: |
         cmake -B build                                      \
           -G '${{matrix.generator}}'                        \
-          -DCMAKE_CXX_COMPILER=clang-${{matrix.compiler}}   \
+          -DCMAKE_C_COMPILER=clang-${{matrix.compiler}}   \
           -DCMAKE_CXX_COMPILER=clang++-${{matrix.compiler}} \
           -DCMAKE_BUILD_TYPE=${{matrix.build_type}}         \
           -DCME_BUILD_TESTS_C=ON                            \
