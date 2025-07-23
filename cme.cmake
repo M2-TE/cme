@@ -261,8 +261,13 @@ namespace ${CME_NAME} {
                 file(APPEND ${CME_C_SOURCE_FILE} "const uint8_t  ${ASSET_NAME}[] = {\n\t#embed \"${ASSET_PATH_FULL}\"\n};\n")
                 file(APPEND ${CME_C_SOURCE_FILE} "const uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
                 # add declaration to C header
-                file(APPEND ${CME_C_HEADER_FILE} "extern const uint8_t* ${ASSET_NAME};\n")
-                file(APPEND ${CME_C_HEADER_FILE} "extern const uint64_t ${ASSET_NAME}_size;\n")
+                if (CME_CONSTEXPR STREQUAL "constexpr")
+                    file(APPEND ${CME_C_HEADER_FILE} "const uint8_t ${ASSET_NAME}[];\n")
+                    file(APPEND ${CME_C_HEADER_FILE} "const uint64_t ${ASSET_NAME}_size;\n")
+                else()
+                    file(APPEND ${CME_C_HEADER_FILE} "extern const uint8_t* ${ASSET_NAME};\n")
+                    file(APPEND ${CME_C_HEADER_FILE} "extern const uint64_t ${ASSET_NAME}_size;\n")
+                endif()
             endif()
 
             if (CME_CXX)

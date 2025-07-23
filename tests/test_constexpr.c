@@ -1,0 +1,7 @@
+#include <stdio.h>
+#include "cme/c_constexpr.h"
+
+int main() {
+    printf("size: %lu\n", subfolder_stuff_txt_size);
+    return 0;
+}
