@@ -23,6 +23,6 @@ jobs:
 
     - name: Build and Test
       run: |
-        cmake -B build -DCMAKE_CONFIGURATION_TYPES=${{matrix.build_type}} -DCME_BUILD_TESTS_C=ON -DCME_BUILD_TESTS_CXX=ON
+        cmake -B build -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DCME_BUILD_TESTS_C=ON -DCME_BUILD_TESTS_CXX=ON
         cmake --build build --parallel
         cd build && ctest --output-on-failure
