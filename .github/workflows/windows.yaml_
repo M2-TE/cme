@@ -12,10 +12,6 @@ jobs:
     defaults:
       run:
         shell: bash
-
-    strategy:
-      matrix:
-        build_type: [ Debug, Release ]
     
     steps:
     - name: Clone
@@ -25,4 +21,4 @@ jobs:
       run: |
         cmake -B build -DCME_BUILD_TESTS_C=ON -DCME_BUILD_TESTS_CXX=ON
         cmake --build build --parallel
-        cd build && ctest --output-on-failure -C ${{matrix.build_type}}
+        cd build && ctest --output-on-failure -C Release
