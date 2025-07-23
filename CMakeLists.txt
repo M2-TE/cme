@@ -13,7 +13,7 @@ if (CME_BUILD_TESTS_C OR CME_BUILD_TESTS_CXX)
 endif()
 if (CME_BUILD_TESTS_C)
     foreach(CONFIGURATION ${CMAKE_CONFIGURATION_TYPES})
-        add_test(NAME cme.c
+        add_test(NAME cme.c.${CONFIGURATION}
             COMMAND ${CMAKE_CTEST_COMMAND}
                 --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/tests"
                                 "${CMAKE_CURRENT_BINARY_DIR}/tests/c"
@@ -24,7 +24,7 @@ if (CME_BUILD_TESTS_C)
 endif()
 if (CME_BUILD_TESTS_CXX)
     foreach(CONFIGURATION ${CMAKE_CONFIGURATION_TYPES})
-        add_test(NAME cme.cxx
+        add_test(NAME cme.cxx.${CONFIGURATION}
             COMMAND ${CMAKE_CTEST_COMMAND}
                 --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/tests"
                                 "${CMAKE_CURRENT_BINARY_DIR}/tests/cxx"
@@ -35,7 +35,7 @@ if (CME_BUILD_TESTS_CXX)
 endif()
 if (CME_BUILD_TESTS_C AND CME_BUILD_TESTS_CXX)
     foreach(CONFIGURATION ${CMAKE_CONFIGURATION_TYPES})
-        add_test(NAME cme.c_cxx
+        add_test(NAME cme.c_cxx.${CONFIGURATION}
             COMMAND ${CMAKE_CTEST_COMMAND}
                 --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/tests"
                                 "${CMAKE_CURRENT_BINARY_DIR}/tests/c_cxx"
