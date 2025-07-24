@@ -18,7 +18,7 @@ include("cme.cmake")
 include(FetchContent)
 FetchContent_Declare(cme
     GIT_REPOSITORY "https://github.com/M2-TE/cme.git"
-    GIT_TAG "v1.1.0"
+    GIT_TAG "v1.1.1"
     GIT_SHALLOW ON)
 FetchContent_MakeAvailable(cme)
 ```
