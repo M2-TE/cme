@@ -26,12 +26,3 @@ if (CME_BUILD_TESTS_CXX)
             --build-config ${CMAKE_BUILD_TYPE}
             --build-options -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCME_BUILD_TESTS_C=OFF -DCME_BUILD_TESTS_CXX=ON)
 endif()
-if (CME_BUILD_TESTS_C AND CME_BUILD_TESTS_CXX)
-    add_test(NAME cme.c_cxx.${CONFIGURATION}
-        COMMAND ${CMAKE_CTEST_COMMAND}
-            --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/tests"
-                            "${CMAKE_CURRENT_BINARY_DIR}/tests/c_cxx"
-            --build-generator ${CMAKE_GENERATOR}
-            --build-config ${CMAKE_BUILD_TYPE}
-            --build-options -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCME_BUILD_TESTS_C=ON -DCME_BUILD_TESTS_CXX=ON)
-endif()
