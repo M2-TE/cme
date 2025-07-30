@@ -4,11 +4,10 @@ cmake_minimum_required(VERSION 3.25)
 set(CME_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/src")
 set(CME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/include")
 
-# main function to create a new asset library
-# possible args with <default>:
+# main function to create a new asset library with <default> args
 # [<STATIC>, SHARED, CONSTEXPR]
 # [C, <CXX>, CXX_MODULE]
-# [BASE_DIR "path/to/dir"]
+# [BASE_DIR "path/to/dir", FILE_SET "file/A" "file/B"]
 function(cme_create_library CME_NAME)
     set(args_option STATIC SHARED CONSTEXPR C CXX CXX_MODULE)
     set(args_single BASE_DIR)
@@ -149,10 +148,11 @@ endfunction()
 
 # isolated code generator block
 block()
-    # INTERFACE asset lib will use constexpr (C++ only) and place assets into the header
+    # INTERFACE asset libs will use constexpr (C++ only) and place assets into the header
     if (CME_TYPE STREQUAL "INTERFACE")
         set(CME_CONSTEXPR ON)
     endif()
+
     if     (CME_LANGUAGE STREQUAL C)
         set(CME_C_FILE     "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
         set(CME_H_FILE     "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
@@ -160,24 +160,25 @@ block()
 
         # asset.h header that will be shared by all C asset libs
         if (NOT EXISTS ${CME_ASSET_FILE})
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}#pragma once\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}#include <stdint.h>\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}struct Asset {\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}    const uint8_t* _data;\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}    const uint64_t _size;\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}};\n")
+            string(APPEND CME_ASSET_FILE_STRING
+                "#pragma once\n"
+                "#include <stdint.h>\n"
+                "\n"
+                "struct Asset {\n"
+                "    const uint8_t* _data;\n"
+                "    const uint64_t _size;\n"
+                "};\n")
             file(WRITE ${CME_ASSET_FILE} "${CME_ASSET_FILE_STRING}")
         endif()
 
         # {name}.c
-        file(WRITE ${CME_C_FILE} "#include <cme/detail/asset.h>\n\n")
+        string(APPEND CME_C_FILE_STRING "#include <cme/detail/asset.h>\n\n")
         # {name}.h
-        file(WRITE  ${CME_H_FILE} "#pragma once\n")
+        string(APPEND CME_H_FILE_STRING "#pragma once\n")
         if (CME_CONSTEXPR)
-            file(APPEND ${CME_H_FILE} "#include <${CME_C_FILE}>\n")
+            string(APPEND CME_H_FILE_STRING "#include <${CME_C_FILE}>\n")
         else()
-            file(APPEND ${CME_H_FILE} "#include <cme/detail/asset.h>\n\n")
+            string(APPEND CME_H_FILE_STRING "#include <cme/detail/asset.h>\n\n")
         endif()
 
         # append #embed entries to header/source files
@@ -189,15 +190,22 @@ block()
             string(MAKE_C_IDENTIFIER ${ASSET_PATH_RELATIVE} ASSET_NAME)
 
             # add definition to C source
-            file(APPEND ${CME_C_FILE} "const uint8_t  ${ASSET_NAME}[] = {\n\t#embed \"${ASSET_PATH_FULL}\"\n};\n")
-            file(APPEND ${CME_C_FILE} "const uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
+            string(APPEND CME_C_FILE_STRING
+                "const uint8_t  ${ASSET_NAME}[] = {\n"
+                "    #embed \"${ASSET_PATH_FULL}\"\n"
+                "};\n"
+                "const uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
             # add declaration to C header
             if (NOT CME_CONSTEXPR)
-                file(APPEND ${CME_H_FILE} "extern const uint8_t* ${ASSET_NAME};\n")
-                file(APPEND ${CME_H_FILE} "extern const uint64_t ${ASSET_NAME}_size;\n")
+                string(APPEND CME_H_FILE_STRING
+                    "extern const uint8_t* ${ASSET_NAME};\n"
+                    "extern const uint64_t ${ASSET_NAME}_size;\n")
             endif()
         endforeach()
 
+        # write the files to disk
+        file(WRITE ${CME_C_FILE} "${CME_C_FILE_STRING}")
+        file(WRITE ${CME_H_FILE} "${CME_H_FILE_STRING}")
     elseif (CME_LANGUAGE STREQUAL CXX)
         set(CME_CPP_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
         set(CME_HPP_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
@@ -205,50 +213,59 @@ block()
 
         # asset.hpp header that will be shared by all C++ asset libs
         if (NOT EXISTS ${CME_ASSET_FILE})
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}#pragma once\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}#include <cstdint>\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}#include <utility>\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}namespace cme {\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}    struct Asset {\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}        // get data as array of T instead of uint8\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}        template<typename T>\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}        auto get() -> std::pair<T*, uint64_t> const {\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}            const T* data = reinterpret_cast<const T*>(_data);\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}            const uint64_t size = _size / sizeof(T);\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}            return { data, size };\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}        }\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}        const uint8_t* _data;\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}        const uint64_t _size;\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}    };\n")
-            set(CME_ASSET_FILE_STRING "${CME_ASSET_FILE_STRING}}\n")
-            file(WRITE  ${CME_ASSET_FILE} "${CME_ASSET_FILE_STRING}")
+            string(APPEND CME_ASSET_FILE_STRING
+                "#pragma once\n"
+                "#include <cstdint>\n"
+                "#include <utility>\n"
+                "\n"
+                "namespace cme {\n"
+                "    struct Asset {\n"
+                "        // get data as array of T instead of uint8\n"
+                "        template<typename T>\n"
+                "        auto get() -> std::pair<T*, uint64_t> const {\n"
+                "            const T* data = reinterpret_cast<const T*>(_data);\n"
+                "            const uint64_t size = _size / sizeof(T);\n"
+                "            return { data, size };\n"
+                "        }\n"
+                "        const uint8_t* _data;\n"
+                "        const uint64_t _size;\n"
+                "    };\n"
+                "}\n")
+            file(WRITE ${CME_ASSET_FILE} "${CME_ASSET_FILE_STRING}")
         endif()
 
         # {name}.hpp
+        string(APPEND CME_HPP_FILE_STRING
+            "#pragma once\n"
+            "#include <string_view>\n"
+            "#include <cme/detail/asset.hpp>\n")
         if (CME_CONSTEXPR)
-            set(CME_CXX_SOURCE_INCLUSION "#include <${CME_CPP_FILE}>\n")
-            set(CME_CONSTEXPR_KEYWORD "constexpr")
+            string(APPEND CME_HPP_FILE_STRING
+                "#include <${CME_CPP_FILE}>\n")
+        else()
+            string(APPEND CME_HPP_FILE_STRING
+                "\n"
+                "namespace ${CME_NAME} {\n"
+                "    // load an embedded asset\n"
+                "    auto load(const std::string_view path) -> cme::Asset;\n"
+                "    // load an embedded asset if it exists\n"
+                "    auto try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool>;\n"
+                "    // check if the path points to an embedded asset\n"
+                "    auto exists(const std::string_view path) noexcept -> bool;\n"
+                "}\n")
         endif()
-        file(WRITE  ${CME_HPP_FILE} "#pragma once\n")
-        file(APPEND ${CME_HPP_FILE} "#include <string_view>\n")
-        file(APPEND ${CME_HPP_FILE} "#include <cme/detail/asset.hpp>\n")
-        file(APPEND ${CME_HPP_FILE} "${CME_CXX_SOURCE_INCLUSION}\n")
-        file(APPEND ${CME_HPP_FILE} "namespace ${CME_NAME} {\n")
-        file(APPEND ${CME_HPP_FILE} "    // load an embedded asset\n")
-        file(APPEND ${CME_HPP_FILE} "    auto ${CME_CONSTEXPR_KEYWORD} load(const std::string_view path) -> cme::Asset;\n")
-        file(APPEND ${CME_HPP_FILE} "    // load an embedded asset if it exists\n")
-        file(APPEND ${CME_HPP_FILE} "    auto ${CME_CONSTEXPR_KEYWORD} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool>;\n")
-        file(APPEND ${CME_HPP_FILE} "    // check if the path points to an embedded asset\n")
-        file(APPEND ${CME_HPP_FILE} "    auto ${CME_CONSTEXPR_KEYWORD} exists(const std::string_view path) noexcept -> bool;\n")
-        file(APPEND ${CME_HPP_FILE} "}\n")
+        file(WRITE ${CME_HPP_FILE} "${CME_HPP_FILE_STRING}")
         
         # {name}.cpp
-        file(WRITE  ${CME_CPP_FILE} "#include <frozen/unordered_map.h>\n")
-        file(APPEND ${CME_CPP_FILE} "#include <frozen/string.h>\n")
-        file(APPEND ${CME_CPP_FILE} "#include <cme/detail/asset.hpp>\n")
-        file(APPEND ${CME_CPP_FILE} "\nnamespace ${CME_NAME} {\n")
+        string(APPEND CME_CPP_FILE_STRING
+            "#include <frozen/unordered_map.h>\n"
+            "#include <frozen/string.h>\n"
+            "#include <cme/detail/asset.hpp>\n"
+            "\n"
+            "namespace ${CME_NAME} {\n"
+            "    namespace detail {\n")
 
-        # append #embed entries to the C++ files
+        # append #embed entries to {name}.cpp
         file(GLOB_RECURSE CME_ASSET_FILES "${CME_BASE_DIR}/*")
         foreach (ASSET_PATH_FULL ${CME_ASSET_FILES})
             # get shortened path relative to shader directory root
@@ -257,13 +274,18 @@ block()
             string(MAKE_C_IDENTIFIER ${ASSET_PATH_RELATIVE} ASSET_NAME)
 
             # add definition to C++ source
-            file(APPEND ${CME_CPP_FILE} "\tstatic constexpr uint8_t  ${ASSET_NAME}[] = {\n\t\t#embed \"${ASSET_PATH_FULL}\"\n\t};\n")
-            file(APPEND ${CME_CPP_FILE} "\tstatic constexpr uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
+            string(APPEND CME_CPP_FILE_STRING
+                "        static constexpr uint8_t  ${ASSET_NAME}[] = {\n"
+                "            #embed \"${ASSET_PATH_FULL}\"\n"
+                "        };\n"
+                "        static constexpr uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
         endforeach()
 
         # build lookup map in {name}.cpp
         list(LENGTH CME_ASSET_FILES CME_ASSET_FILES_COUNT)
-        file(APPEND ${CME_CPP_FILE} "\n\tconstexpr frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
+        string(APPEND CME_CPP_FILE_STRING
+            "\n"
+            "        constexpr frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
         foreach (ASSET_PATH_FULL ${CME_ASSET_FILES})
             # get shortened path relative to shader directory root
             cmake_path(RELATIVE_PATH ASSET_PATH_FULL BASE_DIRECTORY ${CME_BASE_DIR} OUTPUT_VARIABLE ASSET_PATH_RELATIVE)
@@ -271,23 +293,33 @@ block()
             string(MAKE_C_IDENTIFIER ${ASSET_PATH_RELATIVE} ASSET_NAME)
 
             # add lookup entry
-            file(APPEND ${CME_CPP_FILE} "\t\t{\"${ASSET_PATH_RELATIVE}\", {${ASSET_NAME}, ${ASSET_NAME}_size}},\n")
+            string(APPEND CME_CPP_FILE_STRING
+                "            { \"${ASSET_PATH_RELATIVE}\", { ${ASSET_NAME}, ${ASSET_NAME}_size }},\n")
         endforeach()
         
         # finalize {name}.cpp
-        file(APPEND ${CME_CPP_FILE} "\t};\n\n")
-        file(APPEND ${CME_CPP_FILE} "    auto ${CME_CONSTEXPR_KEYWORD} load(const std::string_view path) -> cme::Asset {\n")
-        file(APPEND ${CME_CPP_FILE} "        return asset_map.at(path);\n")
-        file(APPEND ${CME_CPP_FILE} "    }\n")
-        file(APPEND ${CME_CPP_FILE} "    auto ${CME_CONSTEXPR_KEYWORD} try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {\n")
-        file(APPEND ${CME_CPP_FILE} "        auto it = asset_map.find(path);\n")
-        file(APPEND ${CME_CPP_FILE} "        if (it == asset_map.cend()) return {{}, false};\n")
-        file(APPEND ${CME_CPP_FILE} "        else return { it->second, true };\n")
-        file(APPEND ${CME_CPP_FILE} "    }\n")
-        file(APPEND ${CME_CPP_FILE} "    auto ${CME_CONSTEXPR_KEYWORD} exists(const std::string_view path) noexcept -> bool {\n")
-        file(APPEND ${CME_CPP_FILE} "        return asset_map.contains(path);\n")
-        file(APPEND ${CME_CPP_FILE} "    }\n")
-        file(APPEND ${CME_CPP_FILE} "}\n")
+        if (CME_CONSTEXPR)
+            set(CME_CONSTEXPR_KEYWORD "constexpr ")
+        endif()
+        string(APPEND CME_CPP_FILE_STRING
+            "        };\n"
+            "    }\n"
+            "    \n"
+            "    auto ${CME_CONSTEXPR_KEYWORD}load(const std::string_view path) -> cme::Asset {\n"
+            "        return detail::asset_map.at(path);\n"
+            "    }\n"
+            "    auto ${CME_CONSTEXPR_KEYWORD}try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {\n"
+            "        auto it = detail::asset_map.find(path);\n"
+            "        if (it == detail::asset_map.cend()) return {{}, false};\n"
+            "        else return { it->second, true };\n"
+            "    }\n"
+            "    auto ${CME_CONSTEXPR_KEYWORD}exists(const std::string_view path) noexcept -> bool {\n"
+            "        return detail::asset_map.contains(path);\n"
+            "    }\n"
+            "}\n")
+
+
+        file(WRITE ${CME_CPP_FILE} "${CME_CPP_FILE_STRING}")
     elseif (CME_LANGUAGE STREQUAL CME_CXX_MODULE)
         # TODO
     endif()
