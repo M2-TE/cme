@@ -5,11 +5,11 @@ set(CME_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/src")
 set(CME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/include")
 
 # main function to create a new asset library with <default> args
-# [<STATIC>, SHARED, CONSTEXPR]
+# [<STATIC>, SHARED, INTERFACE, CONSTEXPR]
 # [C, <CXX>, CXX_MODULE]
 # [BASE_DIR "path/to/dir", FILE_SET "file/A" "file/B"]
 function(cme_create_library CME_NAME)
-    set(args_option STATIC SHARED CONSTEXPR C CXX CXX_MODULE)
+    set(args_option STATIC SHARED INTERFACE CONSTEXPR C CXX CXX_MODULE)
     set(args_single BASE_DIR)
     cmake_parse_arguments(CME "${args_option}" "${args_single}" "" "${ARGN}")
 
@@ -24,29 +24,27 @@ function(cme_create_library CME_NAME)
         message(FATAL_ERROR "CME: Library name (${CME_NAME}) contains invalid characters")
     endif()
 
-    # Arg: library type [STATIC, SHARED]
-    if ((CME_STATIC OR CME_SHARED) AND CME_CONSTEXPR)
-        message(FATAL_ERROR "CME: CONSTEXPR asset library cannot be STATIC or SHARED")
-    elseif (CME_STATIC AND CME_SHARED)
-        message(FATAL_ERROR "CME: Asset library cannot be both STATIC and SHARED")
-    elseif(CME_CONSTEXPR)
-        set(CME_TYPE INTERFACE)
+    # Arg: library type
+    if ((CME_STATIC AND CME_SHARED) OR (CME_STATIC AND (CME_INTERFACE OR CME_CONSTEXPR)) OR (CME_SHARED AND (CME_INTERFACE OR CME_CONSTEXPR)))
+        message(FATAL_ERROR "CME: asset library can only be one of: STATIC, SHARED, INTERFACE/CONSTEXPR")
     elseif (CME_STATIC)
         set(CME_TYPE STATIC)
     elseif (CME_SHARED)
         set(CME_TYPE SHARED)
+    elseif (CME_INTERFACE OR CME_CONSTEXPR)
+        set(CME_TYPE INTERFACE)
     else()
-        set(CME_TYPE STATIC)
+        set(CME_TYPE STATIC) # default
     endif()
 
-    # Arg: enabled languages [C, CXX, CXX_MODULE]
-    if (CME_C AND CME_CXX)
-        message(FATAL_ERROR "CME: asset library cannot be both C and CXX")
-    elseif(CME_C)
+    # Arg: enabled languages
+    if ((CME_C AND CME_CXX) OR (CME_C AND CME_CXX_MODULE) OR (CME_CXX AND CME_CXX_MODULE))
+        message(FATAL_ERROR "CME: asset library can only be one of: C, CXX or CXX_MODULE")
+    elseif (CME_C)
         set(CME_LANGUAGE C)
-    elseif(CME_CXX)
+    elseif (CME_CXX)
         set(CME_LANGUAGE CXX)
-    elseif(CME_CXX_MODULE)
+    elseif (CME_CXX_MODULE)
         set(CME_LANGUAGE CXX_MODULE)
     else()
         set(CME_LANGUAGE CXX) # default
