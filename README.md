@@ -4,7 +4,7 @@ In C++, the assets can be loaded at runtime (default) or compile-time using rela
 
 Normally, the assets are placed into a library and thus compiled only once, but they can optionally be placed into the headers with `CONSTEXPR` to e.g. allow for compile-time programming or embedding into the source of your choice.
 
-Tested with `gcc 15` and `Clang 20`, earlier compiler versions probably won't recognize #embed. Still need to test with MSVC.
+Works with `gcc 15+` and `Clang 19+`, earlier compiler versions probably won't recognize #embed. MSVC seems to lack C23 implementations, meaning it likely won't work just yet; just use Clang on Windows as well.
 
 ## Getting Started
 
@@ -18,7 +18,7 @@ include("cme.cmake")
 include(FetchContent)
 FetchContent_Declare(cme
     GIT_REPOSITORY "https://github.com/M2-TE/cme.git"
-    GIT_TAG "v1.1.0"
+    GIT_TAG "v1.1.1"
     GIT_SHALLOW ON)
 FetchContent_MakeAvailable(cme)
 ```
