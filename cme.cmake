@@ -149,6 +149,7 @@ endfunction()
 
 # isolated code generator block
 block()
+    # INTERFACE asset lib will use constexpr (C++ only) and place assets into the header
     if (CME_TYPE STREQUAL "INTERFACE")
         set(CME_CONSTEXPR ON)
     endif()
@@ -174,7 +175,7 @@ block()
         # {name}.h
         file(WRITE  ${CME_H_FILE} "#pragma once\n")
         if (CME_CONSTEXPR)
-            file(APPEND ${CME_H_FILE} "#include <${CME_C_FILE}>\n\n")
+            file(APPEND ${CME_H_FILE} "#include <${CME_C_FILE}>\n")
         else()
             file(APPEND ${CME_H_FILE} "#include <cme/detail/asset.h>\n\n")
         endif()
@@ -191,10 +192,7 @@ block()
             file(APPEND ${CME_C_FILE} "const uint8_t  ${ASSET_NAME}[] = {\n\t#embed \"${ASSET_PATH_FULL}\"\n};\n")
             file(APPEND ${CME_C_FILE} "const uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
             # add declaration to C header
-            if (CME_CONSTEXPR)
-                file(APPEND ${CME_H_FILE} "const uint8_t ${ASSET_NAME}[];\n")
-                file(APPEND ${CME_H_FILE} "const uint64_t ${ASSET_NAME}_size;\n")
-            else()
+            if (NOT CME_CONSTEXPR)
                 file(APPEND ${CME_H_FILE} "extern const uint8_t* ${ASSET_NAME};\n")
                 file(APPEND ${CME_H_FILE} "extern const uint64_t ${ASSET_NAME}_size;\n")
             endif()
