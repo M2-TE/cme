@@ -2,21 +2,38 @@ cmake_minimum_required(VERSION 3.25)
 project(cme LANGUAGES C CXX)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cme.cmake")
+set(BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 
 if (CME_BUILD_TESTS_C)
-    cme_create_library(c_assets STATIC C BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
-    add_executable(test_c "test.c")
-    target_link_libraries(test_c PRIVATE cme::c_assets)
+    # implicitly add all files within BASE_DIR
+    cme_create_library(c_assets_implicit STATIC C BASE_DIR "${BASE_DIR}")
+    add_executable(test_c_implicit "test_implicit.c")
+    target_link_libraries(test_c_implicit PRIVATE cme::c_assets_implicit)
 
-    cme_create_library(c_constexpr CONSTEXPR C BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
+    # explicitly add ASSET_FILES with path relative to BASE_DIR
+    file(GLOB_RECURSE ASSET_FILES CONFIGURE_DEPENDS "${BASE_DIR}/*")
+    cme_create_library(c_assets_explicit STATIC C BASE_DIR "${BASE_DIR}" FILES ${ASSET_FILES})
+    add_executable(test_c_explicit "test_explicit.c")
+    target_link_libraries(test_c_explicit PRIVATE cme::c_assets_explicit)
+
+    # implicitly add as INTERFACE
+    cme_create_library(c_constexpr INTERFACE C BASE_DIR "${BASE_DIR}")
     add_executable(test_constexpr_c "test_constexpr.c")
     target_link_libraries(test_constexpr_c PRIVATE cme::c_constexpr)
 elseif (CME_BUILD_TESTS_CXX)
-    cme_create_library(cxx_assets STATIC CXX BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
-    add_executable(test_cpp "test.cpp")
-    target_link_libraries(test_cpp PRIVATE cme::cxx_assets)
+    # implicitly add all files within BASE_DIR
+    cme_create_library(cxx_assets_implicit STATIC CXX BASE_DIR "${BASE_DIR}")
+    add_executable(test_cpp_implicit "test_implicit.cpp")
+    target_link_libraries(test_cpp_implicit PRIVATE cme::cxx_assets_implicit)
 
-    cme_create_library(cxx_constexpr CONSTEXPR CXX BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
+    # explicitly add ASSET_FILES with path relative to BASE_DIR
+    file(GLOB_RECURSE ASSET_FILES CONFIGURE_DEPENDS "${BASE_DIR}/*")
+    cme_create_library(cxx_assets_explicit STATIC CXX BASE_DIR "${BASE_DIR}" FILES ${ASSET_FILES})
+    add_executable(test_cpp_explicit "test_explicit.cpp")
+    target_link_libraries(test_cpp_explicit PRIVATE cme::cxx_assets_explicit)
+
+    # implicitly add as CONSTEXPR
+    cme_create_library(cxx_constexpr CONSTEXPR CXX BASE_DIR "${BASE_DIR}")
     add_executable(test_constexpr_cpp "test_constexpr.cpp")
     target_link_libraries(test_constexpr_cpp PRIVATE cme::cxx_constexpr)
 endif()

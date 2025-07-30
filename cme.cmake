@@ -5,28 +5,30 @@ set(CME_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/src")
 set(CME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/include")
 
 # main function to create a new asset library with <default> args
-# [<STATIC>, SHARED, INTERFACE, CONSTEXPR]
-# [C, <CXX>, CXX_MODULE]
-# [BASE_DIR "path/to/dir", FILE_SET "file/A" "file/B"]
+# OPTIONAL [<STATIC>, SHARED, INTERFACE/CONSTEXPR]
+# OPTIONAL [C, <CXX>, CXX_MODULE]
+# REQUIRED [BASE_DIR "/path/to/dir"]
+# OPTIONAL [FILES "/file/A" "/file/B"]
 function(cme_create_library CME_NAME)
     set(args_option STATIC SHARED INTERFACE CONSTEXPR C CXX CXX_MODULE)
     set(args_single BASE_DIR)
-    cmake_parse_arguments(CME "${args_option}" "${args_single}" "" "${ARGN}")
+    set(args_multi  FILES)
+    cmake_parse_arguments(CME "${args_option}" "${args_single}" "${args_multi}" "${ARGN}")
 
     # CME_* arg error handling
     if (DEFINED CME_UNPARSED_ARGUMENTS)
-        message(FATAL_ERROR "CME: Unknown arguments (${CME_UNPARSED_ARGUMENTS})")
+        message(FATAL_ERROR "CME asset library ${CME_NAME} created with unknown arguments (${CME_UNPARSED_ARGUMENTS})")
     endif()
 
     # Arg: asset library name
     set(CME_VALID_CHARS "^[a-zA-Z_][a-zA-Z0-9_]*[^!-\/:-@[-`{-~]$")
     if (NOT ${CME_NAME} MATCHES ${CME_VALID_CHARS})
-        message(FATAL_ERROR "CME: Library name (${CME_NAME}) contains invalid characters")
+        message(FATAL_ERROR "CME asset library ${CME_NAME} contains invalid characters")
     endif()
 
     # Arg: library type
     if ((CME_STATIC AND CME_SHARED) OR (CME_STATIC AND (CME_INTERFACE OR CME_CONSTEXPR)) OR (CME_SHARED AND (CME_INTERFACE OR CME_CONSTEXPR)))
-        message(FATAL_ERROR "CME: asset library can only be one of: STATIC, SHARED, INTERFACE/CONSTEXPR")
+        message(FATAL_ERROR "CME asset library ${CME_NAME} can only be one of: STATIC, SHARED, INTERFACE/CONSTEXPR")
     elseif (CME_STATIC)
         set(CME_TYPE STATIC)
     elseif (CME_SHARED)
@@ -39,7 +41,7 @@ function(cme_create_library CME_NAME)
 
     # Arg: enabled languages
     if ((CME_C AND CME_CXX) OR (CME_C AND CME_CXX_MODULE) OR (CME_CXX AND CME_CXX_MODULE))
-        message(FATAL_ERROR "CME: asset library can only be one of: C, CXX or CXX_MODULE")
+        message(FATAL_ERROR "CME asset library ${CME_NAME} can only be one of: C, CXX or CXX_MODULE")
     elseif (CME_C)
         set(CME_LANGUAGE C)
     elseif (CME_CXX)
@@ -50,15 +52,18 @@ function(cme_create_library CME_NAME)
         set(CME_LANGUAGE CXX) # default
     endif()
 
-    # Arg: base asset directory
+    # Arg: asset files
     if (NOT DEFINED CME_BASE_DIR)
-        message(FATAL_ERROR "CME: Requires BASE_DIR")
-    elseif(NOT EXISTS ${CME_BASE_DIR})
-        message(FATAL_ERROR "CME: Invalid BASE_DIR (${CME_BASE_DIR})")
+        message(FATAL_ERROR "CME asset library ${CME_NAME} requires a BASE_DIR")
+    elseif (NOT EXISTS ${CME_BASE_DIR})
+        message(FATAL_ERROR "CME asset library ${CME_NAME} given an invalid BASE_DIR (${CME_BASE_DIR})")
+    elseif (DEFINED CME_FILES)
+        # only explicitly pass all the files when provided
+        set(CME_EXPLICIT_FILE_PARAM -DCME_FILES="${CME_FILES}")
+    else()
+        # otherwise we just use file globbing
+        file(GLOB_RECURSE CME_FILES CONFIGURE_DEPENDS "${CME_BASE_DIR}/*")
     endif()
-
-    # need to glob all files before lib creation to build dependency graph
-    file(GLOB_RECURSE CME_ASSET_FILES CONFIGURE_DEPENDS "${CME_BASE_DIR}/*")
 
     # check for CODEGEN support
     set(CME_CODEGEN_ARG "")
@@ -69,18 +74,20 @@ function(cme_create_library CME_NAME)
 
     # execute custom command, running this cme.cmake script with set variables
     # creates cme_* and cme::* libraries with dependency on generated files
+    set(CME_PARAMS
+        -DCME_NAME="${CME_NAME}"
+        -DCME_TYPE="${CME_TYPE}"
+        -DCME_LANGUAGE="${CME_LANGUAGE}"
+        -DCME_BASE_DIR="${CME_BASE_DIR}"
+        ${CME_EXPLICIT_FILE_PARAM}
+        -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake")
     if (CME_C)
         set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
         set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
         add_custom_command(
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
-            DEPENDS ${CME_ASSET_FILES}
-            COMMAND ${CMAKE_COMMAND}
-                -DCME_NAME=${CME_NAME}
-                -DCME_TYPE=${CME_TYPE}
-                -DCME_LANGUAGE=${CME_LANGUAGE}
-                -DCME_BASE_DIR=${CME_BASE_DIR}
-                -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake
+            DEPENDS ${CME_FILES}
+            COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
             COMMENT "Generating C asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
@@ -89,20 +96,15 @@ function(cme_create_library CME_NAME)
         set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
         add_custom_command(
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
-            DEPENDS ${CME_ASSET_FILES}
-            COMMAND ${CMAKE_COMMAND}
-                -DCME_NAME=${CME_NAME}
-                -DCME_TYPE=${CME_TYPE}
-                -DCME_LANGUAGE=${CME_LANGUAGE}
-                -DCME_BASE_DIR=${CME_BASE_DIR}
-                -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake
+            DEPENDS ${CME_FILES}
+            COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
             COMMENT "Generating C++ asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     endif()
 
-    # scope needs to be INTERFACE when CONSTEXPR is used
-    if (CME_CONSTEXPR)
+    # scope needs to be INTERFACE when INTERFACE/CONSTEXPR is used
+    if (CME_INTERFACE OR CME_CONSTEXPR)
         set(CME_LIBRARY_SCOPE INTERFACE)
         set(CME_INCLUDE_SCOPE INTERFACE)
     else()
@@ -154,7 +156,7 @@ block()
     if     (CME_LANGUAGE STREQUAL C)
         set(CME_C_FILE     "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
         set(CME_H_FILE     "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
-        seT(CME_ASSET_FILE "${CME_INCLUDE_DIR}/cme/detail/asset.h")
+        set(CME_ASSET_FILE "${CME_INCLUDE_DIR}/cme/detail/asset.h")
 
         # asset.h header that will be shared by all C asset libs
         if (NOT EXISTS ${CME_ASSET_FILE})
@@ -180,8 +182,12 @@ block()
         endif()
 
         # append #embed entries to header/source files
-        file(GLOB_RECURSE CME_ASSET_FILES "${CME_BASE_DIR}/*")
-        foreach (ASSET_PATH_FULL ${CME_ASSET_FILES})
+        if (NOT DEFINED CME_FILES)
+            file(GLOB_RECURSE CME_FILES "${CME_BASE_DIR}/*")
+        else()
+            separate_arguments(CME_FILES)
+        endif()
+        foreach (ASSET_PATH_FULL ${CME_FILES})
             # get shortened path relative to shader directory root
             cmake_path(RELATIVE_PATH ASSET_PATH_FULL BASE_DIRECTORY ${CME_BASE_DIR} OUTPUT_VARIABLE ASSET_PATH_RELATIVE)
             # replace illegal characters for C var names
@@ -264,8 +270,12 @@ block()
             "    namespace detail {\n")
 
         # append #embed entries to {name}.cpp
-        file(GLOB_RECURSE CME_ASSET_FILES "${CME_BASE_DIR}/*")
-        foreach (ASSET_PATH_FULL ${CME_ASSET_FILES})
+        if (NOT DEFINED CME_FILES)
+            file(GLOB_RECURSE CME_FILES "${CME_BASE_DIR}/*")
+        else()
+            separate_arguments(CME_FILES)
+        endif()
+        foreach (ASSET_PATH_FULL ${CME_FILES})
             # get shortened path relative to shader directory root
             cmake_path(RELATIVE_PATH ASSET_PATH_FULL BASE_DIRECTORY ${CME_BASE_DIR} OUTPUT_VARIABLE ASSET_PATH_RELATIVE)
             # replace illegal characters to suit C var name (replace with "_" for the most part)
@@ -280,11 +290,11 @@ block()
         endforeach()
 
         # build lookup map in {name}.cpp
-        list(LENGTH CME_ASSET_FILES CME_ASSET_FILES_COUNT)
+        list(LENGTH CME_FILES CME_ASSET_FILES_COUNT)
         string(APPEND CME_CPP_FILE_STRING
             "\n"
             "        constexpr frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
-        foreach (ASSET_PATH_FULL ${CME_ASSET_FILES})
+        foreach (ASSET_PATH_FULL ${CME_FILES})
             # get shortened path relative to shader directory root
             cmake_path(RELATIVE_PATH ASSET_PATH_FULL BASE_DIRECTORY ${CME_BASE_DIR} OUTPUT_VARIABLE ASSET_PATH_RELATIVE)
             # replace illegal characters for C var names

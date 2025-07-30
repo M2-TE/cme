@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "cme/c_constexpr.h"
+#include "cme/c_assets_implicit.h"
 
 int main() {
     printf("size: %lu\n", subfolder_stuff_txt_size);
