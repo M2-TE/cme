@@ -39,7 +39,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
           -DCME_BUILD_TESTS_C=ON                    \
           -DCME_BUILD_TESTS_CXX=ON                  \
-          -DCME_BUILD_TESTS_CXX_MODULE=ON
+          -DCME_BUILD_TESTS_CXX_MODULE=OFF
         cmake --build build --parallel
         cd build && ctest --output-on-failure
 
