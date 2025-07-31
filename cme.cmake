@@ -148,11 +148,6 @@ endfunction()
 
 # isolated code generator block
 block()
-    # INTERFACE asset libs will use constexpr (C++ only) and place assets into the header
-    if (CME_TYPE STREQUAL "INTERFACE")
-        set(CME_CONSTEXPR ON)
-    endif()
-
     if     (CME_LANGUAGE STREQUAL C)
         set(CME_C_FILE     "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
         set(CME_H_FILE     "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
@@ -175,7 +170,7 @@ block()
         string(APPEND CME_C_FILE_STRING "#include <cme/detail/asset.h>\n\n")
         # {name}.h
         string(APPEND CME_H_FILE_STRING "#pragma once\n")
-        if (CME_CONSTEXPR)
+        if (CME_TYPE STREQUAL "INTERFACE")
             string(APPEND CME_H_FILE_STRING "#include <${CME_C_FILE}>\n")
         else()
             string(APPEND CME_H_FILE_STRING "#include <cme/detail/asset.h>\n\n")
@@ -200,7 +195,7 @@ block()
                 "};\n"
                 "const uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
             # add declaration to C header
-            if (NOT CME_CONSTEXPR)
+            if (NOT CME_TYPE STREQUAL "INTERFACE")
                 string(APPEND CME_H_FILE_STRING
                     "extern const uint8_t* ${ASSET_NAME};\n"
                     "extern const uint64_t ${ASSET_NAME}_size;\n")
@@ -243,7 +238,7 @@ block()
             "#pragma once\n"
             "#include <string_view>\n"
             "#include <cme/detail/asset.hpp>\n")
-        if (CME_CONSTEXPR)
+        if (CME_TYPE STREQUAL "INTERFACE")
             string(APPEND CME_HPP_FILE_STRING
                 "#include <${CME_CPP_FILE}>\n")
         else()
@@ -306,7 +301,7 @@ block()
         endforeach()
         
         # finalize {name}.cpp
-        if (CME_CONSTEXPR)
+        if (CME_TYPE STREQUAL "INTERFACE")
             set(CME_CONSTEXPR_KEYWORD "constexpr ")
         endif()
         string(APPEND CME_CPP_FILE_STRING
