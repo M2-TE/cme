@@ -75,10 +75,11 @@ function(cme_create_library CME_NAME)
     # add custom command, which will run this cme.cmake script with set variables
     # creates cme_* and cme::* libraries with dependencies on generated files
     set(CME_PARAMS
-        -DCME_NAME="${CME_NAME}"
-        -DCME_TYPE="${CME_TYPE}"
-        -DCME_LANGUAGE="${CME_LANGUAGE}"
-        -DCME_BASE_DIR="${CME_BASE_DIR}"
+        -D CME_RUN_GENERATOR=ON
+        -D CME_NAME="${CME_NAME}"
+        -D CME_TYPE="${CME_TYPE}"
+        -D CME_LANGUAGE="${CME_LANGUAGE}"
+        -D CME_BASE_DIR="${CME_BASE_DIR}"
         ${CME_EXPLICIT_FILE_PARAM}
         -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake")
     if (CME_C)
@@ -172,7 +173,7 @@ endfunction()
 
 # isolated code generator block
 block()
-    if     (CME_LANGUAGE STREQUAL C)
+    if     (CME_RUN_GENERATOR AND CME_LANGUAGE STREQUAL C)
         set(CME_C_FILE     "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
         set(CME_H_FILE     "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
         set(CME_ASSET_FILE "${CME_INCLUDE_DIR}/cme/detail/asset.h")
@@ -229,7 +230,7 @@ block()
         # write the files to disk
         file(WRITE ${CME_C_FILE} "${CME_C_FILE_STRING}")
         file(WRITE ${CME_H_FILE} "${CME_H_FILE_STRING}")
-    elseif (CME_LANGUAGE STREQUAL CXX)
+    elseif (CME_RUN_GENERATOR AND CME_LANGUAGE STREQUAL CXX)
         set(CME_CPP_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
         set(CME_HPP_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
         set(CME_ASSET_FILE "${CME_INCLUDE_DIR}/cme/detail/asset.hpp")
@@ -347,7 +348,7 @@ block()
 
 
         file(WRITE ${CME_CPP_FILE} "${CME_CPP_FILE_STRING}")
-    elseif (CME_LANGUAGE STREQUAL CXX_MODULE)
+    elseif (CME_RUN_GENERATOR AND CME_LANGUAGE STREQUAL CXX_MODULE)
         set(CME_CXX_MODULE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cppm")
         set(CME_ASSET_FILE "${CME_INCLUDE_DIR}/cme/detail/asset.hpp")
 

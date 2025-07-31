@@ -31,51 +31,51 @@ jobs:
 
     - name: Build and Test (Ninja)
       run: |
-        cmake -B build                              \
-          -G Ninja                                  \
-          -DCMAKE_C_COMPILER=clang-19               \
-          -DCMAKE_CXX_COMPILER=clang++-19           \
-          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-          -DCME_BUILD_TESTS_C=ON                    \
-          -DCME_BUILD_TESTS_CXX=ON                  \
-          -DCME_BUILD_TESTS_CXX_MODULE=OFF
+        cmake -B build                               \
+          -G Ninja                                   \
+          -D CMAKE_C_COMPILER=clang-19               \
+          -D CMAKE_CXX_COMPILER=clang++-19           \
+          -D CMAKE_BUILD_TYPE=${{matrix.build_type}} \
+          -D CME_BUILD_TESTS_C=ON                    \
+          -D CME_BUILD_TESTS_CXX=ON                  \
+          -D CME_BUILD_TESTS_CXX_MODULE=OFF
         cmake --build build --parallel
         cd build && ctest --output-on-failure
         cd .. && sudo rm -rf build
 
-        cmake -B build                              \
-          -G Ninja                                  \
-          -DCMAKE_C_COMPILER=clang-20               \
-          -DCMAKE_CXX_COMPILER=clang++-20           \
-          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-          -DCME_BUILD_TESTS_C=ON                    \
-          -DCME_BUILD_TESTS_CXX=ON                  \
-          -DCME_BUILD_TESTS_CXX_MODULE=ON
+        cmake -B build                               \
+          -G Ninja                                   \
+          -D CMAKE_C_COMPILER=clang-20               \
+          -D CMAKE_CXX_COMPILER=clang++-20           \
+          -D CMAKE_BUILD_TYPE=${{matrix.build_type}} \
+          -D CME_BUILD_TESTS_C=ON                    \
+          -D CME_BUILD_TESTS_CXX=ON                  \
+          -D CME_BUILD_TESTS_CXX_MODULE=ON
         cmake --build build --parallel
         cd build && ctest --output-on-failure
         cd .. && sudo rm -rf build
 
     - name: Build and Test (Unix Makefiles)
       run: |
-        cmake -B build                              \
-          -G 'Unix Makefiles'                       \
-          -DCMAKE_C_COMPILER=clang-19               \
-          -DCMAKE_CXX_COMPILER=clang++-19           \
-          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-          -DCME_BUILD_TESTS_C=ON                    \
-          -DCME_BUILD_TESTS_CXX=ON                  \
-          -DCME_BUILD_TESTS_CXX_MODULE=OFF
+        cmake -B build                               \
+          -G 'Unix Makefiles'                        \
+          -D CMAKE_C_COMPILER=clang-19               \
+          -D CMAKE_CXX_COMPILER=clang++-19           \
+          -D CMAKE_BUILD_TYPE=${{matrix.build_type}} \
+          -D CME_BUILD_TESTS_C=ON                    \
+          -D CME_BUILD_TESTS_CXX=ON                  \
+          -D CME_BUILD_TESTS_CXX_MODULE=OFF
         cmake --build build --parallel
         cd build && ctest --output-on-failure
         cd .. && sudo rm -rf build
 
-        cmake -B build                              \
-          -G 'Unix Makefiles'                       \
-          -DCMAKE_C_COMPILER=clang-20               \
-          -DCMAKE_CXX_COMPILER=clang++-20           \
-          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-          -DCME_BUILD_TESTS_C=ON                    \
-          -DCME_BUILD_TESTS_CXX=ON                  \
-          -DCME_BUILD_TESTS_CXX_MODULE=OFF
+        cmake -B build                               \
+          -G 'Unix Makefiles'                        \
+          -D CMAKE_C_COMPILER=clang-20               \
+          -D CMAKE_CXX_COMPILER=clang++-20           \
+          -D CMAKE_BUILD_TYPE=${{matrix.build_type}} \
+          -D CME_BUILD_TESTS_C=ON                    \
+          -D CME_BUILD_TESTS_CXX=ON                  \
+          -D CME_BUILD_TESTS_CXX_MODULE=OFF
         cmake --build build --parallel
         cd build && ctest --output-on-failure
