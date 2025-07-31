@@ -59,7 +59,7 @@ function(cme_create_library CME_NAME)
         message(FATAL_ERROR "CME asset library ${CME_NAME} given an invalid BASE_DIR (${CME_BASE_DIR})")
     elseif (DEFINED CME_FILES)
         # only explicitly pass all the files when provided
-        set(CME_EXPLICIT_FILE_PARAM -DCME_FILES="${CME_FILES}")
+        set(CME_EXPLICIT_FILE_PARAM -D CME_FILES="${CME_FILES}")
     else()
         # otherwise we just use file globbing
         file(GLOB_RECURSE CME_FILES CONFIGURE_DEPENDS "${CME_BASE_DIR}/*")
