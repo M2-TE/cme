@@ -25,7 +25,7 @@ jobs:
     - name: Install Clang 19 and 20
       run: |
         sudo apt-get update && sudo apt-get install lsb-release gpg software-properties-common clang clang-tools
-        ln -s /usr/bin/clang-scan-deps-18 usr/local/bin/clang-scan-deps
+        ln -s /usr/bin/clang-scan-deps-18 usr/bin/clang-scan-deps
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
         sudo ./llvm.sh 19
