@@ -87,12 +87,10 @@ function(cme_create_library CME_NAME)
         -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake")
     if (CME_C)
         set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
-        if (NOT (CME_INTERFACE OR CME_CONSTEXPR))
-            set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
-        endif()
+        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
 
         add_custom_command(
-            OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
+            OUTPUT  ${CME_HEADER_FILE} ${CME_SOURCE_FILE}
             DEPENDS ${CME_FILES}
             COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
             COMMENT "Generating C asset library cme::${CME_NAME}"
@@ -101,12 +99,10 @@ function(cme_create_library CME_NAME)
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     elseif (CME_CXX)
         set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
-        if (NOT (CME_INTERFACE OR CME_CONSTEXPR))
-            set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
-        endif()
+        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
 
         add_custom_command(
-            OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
+            OUTPUT  ${CME_HEADER_FILE} ${CME_SOURCE_FILE}
             DEPENDS ${CME_FILES}
             COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
             COMMENT "Generating C++ asset library cme::${CME_NAME}"
@@ -115,9 +111,7 @@ function(cme_create_library CME_NAME)
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     elseif (CME_CXX_MODULE)
         set(CME_CXX_MODULE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cppm")
-        if (NOT (CME_INTERFACE OR CME_CONSTEXPR))
-            set(CME_CXX_MODULE_IMPLEMENTATION_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
-        endif()
+        set(CME_CXX_MODULE_IMPLEMENTATION_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
 
         add_custom_command(
             OUTPUT  ${CME_CXX_MODULE_FILE} ${CME_CXX_MODULE_IMPLEMENTATION_FILE}
@@ -298,6 +292,7 @@ block()
         
         # cme_{name}.cpp
         string(APPEND CME_CPP_FILE_STRING
+            "#include <string_view>\n"
             "#include <frozen/unordered_map.h>\n"
             "#include <frozen/string.h>\n"
             "#include <cme/detail/asset.hpp>\n"
