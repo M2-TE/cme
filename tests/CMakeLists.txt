@@ -37,10 +37,17 @@ elseif (CME_BUILD_TESTS_CXX)
     add_executable(test_constexpr_cpp "test_constexpr.cpp")
     target_link_libraries(test_constexpr_cpp PRIVATE cme::cxx_constexpr)
 elseif (CME_BUILD_TESTS_CXX_MODULE)
-    # test the C++20-Module
-    cme_create_library(cxx_module_assets INTERFACE CXX_MODULE BASE_DIR "${BASE_DIR}")
+    # test the C++20-Module as a STATIC library
+    cme_create_library(cxx_module_assets STATIC CXX_MODULE BASE_DIR "${BASE_DIR}")
     add_executable(test_cpp_module "test_module.cpp")
     target_link_libraries(test_cpp_module PRIVATE cme::cxx_module_assets)
     target_compile_features(test_cpp_module PRIVATE cxx_std_20)
     set_target_properties(test_cpp_module PROPERTIES CXX_SCAN_FOR_MODULES ON)
+
+    # # test the C++20-Module as an INTERFACE library
+    # cme_create_library(cxx_module_assets_constexpr INTERFACE CXX_MODULE BASE_DIR "${BASE_DIR}")
+    # add_executable(test_cpp_module_constexpr "test_module_constexpr.cpp")
+    # target_link_libraries(test_cpp_module_constexpr PRIVATE cme::cxx_module_assets_constexpr)
+    # target_compile_features(test_cpp_module_constexpr PRIVATE cxx_std_20)
+    # set_target_properties(test_cpp_module_constexpr PROPERTIES CXX_SCAN_FOR_MODULES ON)
 endif()

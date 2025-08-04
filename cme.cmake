@@ -87,37 +87,49 @@ function(cme_create_library CME_NAME)
         -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake")
     if (CME_C)
         set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
-        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
+        if (NOT (CME_INTERFACE OR CME_CONSTEXPR))
+            set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
+        endif()
+
         add_custom_command(
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_FILES}
             COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
             COMMENT "Generating C asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
+
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     elseif (CME_CXX)
         set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
-        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
+        if (NOT (CME_INTERFACE OR CME_CONSTEXPR))
+            set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
+        endif()
+
         add_custom_command(
             OUTPUT  ${CME_SOURCE_FILE} ${CME_HEADER_FILE}
             DEPENDS ${CME_FILES}
             COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
             COMMENT "Generating C++ asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
+
         add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
     elseif (CME_CXX_MODULE)
         set(CME_CXX_MODULE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cppm")
+        if (NOT (CME_INTERFACE OR CME_CONSTEXPR))
+            set(CME_CXX_MODULE_IMPLEMENTATION_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
+        endif()
+
         add_custom_command(
-            OUTPUT  ${CME_CXX_MODULE_FILE}
+            OUTPUT  ${CME_CXX_MODULE_FILE} ${CME_CXX_MODULE_IMPLEMENTATION_FILE}
             DEPENDS ${CME_FILES}
             COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
             COMMENT "Generating C++20-Module asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
-        # CXX_MODULE libraries may not be INTERFACE like C or CXX
+
         if (CME_INTERFACE OR CME_CONSTEXPR)
             add_library(cme_${CME_NAME} OBJECT)
         else()
-            add_library(cme_${CME_NAME} ${CME_TYPE})
+            add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_CXX_MODULE_IMPLEMENTATION_FILE})
         endif()
         target_sources(cme_${CME_NAME} PUBLIC
             FILE_SET cxx_module_file
@@ -127,7 +139,7 @@ function(cme_create_library CME_NAME)
     endif()
 
     # scope needs to be INTERFACE when INTERFACE/CONSTEXPR is used
-    if ((CME_INTERFACE OR CME_CONSTEXPR) AND NOT CME_CXX_MODULE)
+    if (CME_INTERFACE OR CME_CONSTEXPR)
         set(CME_LIBRARY_SCOPE INTERFACE)
         set(CME_INCLUDE_SCOPE INTERFACE)
     else()
@@ -143,15 +155,16 @@ function(cme_create_library CME_NAME)
         if (CME_CXX_MODULE)
             # enforce C++20 for modules
             target_compile_features(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} cxx_std_20)
+            set_target_properties(cme_${CME_NAME} PROPERTIES CXX_SCAN_FOR_MODULES ON)
         else()
             # enforce C++14 for frozen
             target_compile_features(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} cxx_std_14)
         endif()
 
         # suppress warnings about #embed being a C23 extension
-        if (MSVC)
+        if     (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
             target_compile_options(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} "/W0") # TODO: there should be a specific flag for it
-        else()
+        elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
             target_compile_options(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} "-Wno-c23-extensions")
         endif()
 
@@ -353,6 +366,7 @@ block()
         file(WRITE ${CME_CPP_FILE} "${CME_CPP_FILE_STRING}")
     elseif (CME_RUN_GENERATOR AND CME_LANGUAGE STREQUAL CXX_MODULE)
         set(CME_CXX_MODULE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cppm")
+        set(CME_CXX_MODULE_IMPLEMENTATION_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
         set(CME_ASSET_FILE "${CME_INCLUDE_DIR}/cme/detail/asset.hpp")
 
         # asset.hpp header that will be shared by all C++ asset libs
@@ -378,15 +392,37 @@ block()
             file(WRITE ${CME_ASSET_FILE} "${CME_ASSET_FILE_STRING}")
         endif()
 
-        # cme_{name}.cppm
-        string(APPEND CME_CXX_MODULE_FILE_STRING
-            "module;\n"
-            "#include <frozen/unordered_map.h>\n"
-            "#include <frozen/string.h>\n"
-            "#include <cme/detail/asset.hpp>\n"
-            "export module cme.${CME_NAME};\n"
-            "\n"
-            "namespace ${CME_NAME}::detail {\n")
+        if (CME_TYPE STREQUAL "INTERFACE")
+            # cme_{name}.cppm
+            string(APPEND CME_CXX_MODULE_STRING
+                "module;\n"
+                "#include <string_view>\n"
+                "#include <frozen/unordered_map.h>\n"
+                "#include <frozen/string.h>\n"
+                "#include <cme/detail/asset.hpp>\n"
+                "export module cme.${CME_NAME};\n"
+                "\n"
+                "namespace ${CME_NAME}::detail {\n")
+        else()
+            # cme_{name}.cppm
+            string(APPEND CME_CXX_MODULE_STRING
+                "module;\n"
+                "#include <string_view>\n"
+                "#include <cme/detail/asset.hpp>\n"
+                "export module cme.${CME_NAME};\n"
+                "\n")
+
+            # cme_{name}.cpp
+            string(APPEND CME_CXX_MODULE_IMPLEMENTATION_STRING
+                "module;\n"
+                "#include <string_view>\n"
+                "#include <frozen/unordered_map.h>\n"
+                "#include <frozen/string.h>\n"
+                "#include <cme/detail/asset.hpp>\n"
+                "module cme.${CME_NAME};\n"
+                "\n"
+                "namespace ${CME_NAME}::detail {\n")
+        endif()
 
         # append #embed entries
         if (NOT DEFINED CME_FILES)
@@ -394,54 +430,87 @@ block()
         else()
             separate_arguments(CME_FILES)
         endif()
+
+        list(LENGTH CME_FILES CME_ASSET_FILES_COUNT)
+        string(APPEND CME_FROZEN_STRING
+            "    frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
         foreach (ASSET_PATH_FULL ${CME_FILES})
             # get shortened path relative to shader directory root
             cmake_path(RELATIVE_PATH ASSET_PATH_FULL BASE_DIRECTORY ${CME_BASE_DIR} OUTPUT_VARIABLE ASSET_PATH_RELATIVE)
             # replace illegal characters to suit C var name (replace with "_" for the most part)
             string(MAKE_C_IDENTIFIER ${ASSET_PATH_RELATIVE} ASSET_NAME)
 
-            # add definition to C++ source
-            string(APPEND CME_CXX_MODULE_FILE_STRING
-                "    static constexpr uint8_t  ${ASSET_NAME}[] = {\n"
-                "        #embed \"${ASSET_PATH_FULL}\"\n"
+            if (CME_TYPE STREQUAL "INTERFACE")
+                # add definition to C++ module
+                string(APPEND CME_CXX_MODULE_STRING
+                    "    uint8_t  ${ASSET_NAME}[] = {\n"
+                    "        #embed \"${ASSET_PATH_FULL}\"\n"
+                    "    };\n"
+                    "    uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
+            else()
+                # add definition to C++ module implementation unit
+                string(APPEND CME_CXX_MODULE_IMPLEMENTATION_STRING
+                    "    uint8_t  ${ASSET_NAME}[] = {\n"
+                    "        #embed \"${ASSET_PATH_FULL}\"\n"
+                    "    };\n"
+                    "    uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
+            endif()
+
+            # add lookup entry to frozen hashmap
+            string(APPEND CME_FROZEN_STRING
+                "        { \"${ASSET_PATH_RELATIVE}\", { ${ASSET_NAME}, ${ASSET_NAME}_size }},\n")
+        endforeach()
+
+        # finalize source files
+        if (CME_TYPE STREQUAL "INTERFACE")
+            string(APPEND CME_CXX_MODULE_STRING
+                "\n"
+                "${CME_FROZEN_STRING}"
                 "    };\n"
-                "    static constexpr uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
-        endforeach()
-
-        # build lookup map
-        list(LENGTH CME_FILES CME_ASSET_FILES_COUNT)
-        string(APPEND CME_CXX_MODULE_FILE_STRING
-            "\n"
-            "    constexpr frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
-        foreach (ASSET_PATH_FULL ${CME_FILES})
-            # get shortened path relative to shader directory root
-            cmake_path(RELATIVE_PATH ASSET_PATH_FULL BASE_DIRECTORY ${CME_BASE_DIR} OUTPUT_VARIABLE ASSET_PATH_RELATIVE)
-            # replace illegal characters for C var names
-            string(MAKE_C_IDENTIFIER ${ASSET_PATH_RELATIVE} ASSET_NAME)
-
-            # add lookup entry
-            string(APPEND CME_CXX_MODULE_FILE_STRING
-                "            { \"${ASSET_PATH_RELATIVE}\", { ${ASSET_NAME}, ${ASSET_NAME}_size }},\n")
-        endforeach()
-
-        # finalize cme_{name}.cppm
-        string(APPEND CME_CXX_MODULE_FILE_STRING
-            "    };\n"
-            "}\n"
-            "\n"
-            "export namespace ${CME_NAME} {\n"
-            "    auto constexpr load(const std::string_view path) -> cme::Asset {\n"
-            "        return detail::asset_map.at(path);\n"
-            "    }\n"
-            "    auto constexpr try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {\n"
-            "        auto it = detail::asset_map.find(path);\n"
-            "        if (it == detail::asset_map.cend()) return {{}, false};\n"
-            "        else return { it->second, true };\n"
-            "    }\n"
-            "    auto constexpr exists(const std::string_view path) noexcept -> bool {\n"
-            "        return detail::asset_map.contains(path);\n"
-            "    }\n"
-            "}\n")
-        file(WRITE ${CME_CXX_MODULE_FILE} "${CME_CXX_MODULE_FILE_STRING}")
+                "}\n"
+                "\n"
+                "export namespace ${CME_NAME} {\n"
+                "    auto constexpr load(const std::string_view path) -> cme::Asset {\n"
+                "        return detail::asset_map.at(path);\n"
+                "    }\n"
+                "    auto constexpr try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {\n"
+                "        auto it = detail::asset_map.find(path);\n"
+                "        if (it == detail::asset_map.cend()) return {{}, false};\n"
+                "        else return { it->second, true };\n"
+                "    }\n"
+                "    auto constexpr exists(const std::string_view path) noexcept -> bool {\n"
+                "        return detail::asset_map.contains(path);\n"
+                "    }\n"
+                "}\n")
+            file(WRITE ${CME_CXX_MODULE_FILE} "${CME_CXX_MODULE_STRING}")
+        else()
+            string(APPEND CME_CXX_MODULE_STRING
+                "export namespace ${CME_NAME} {\n"
+                "    auto load(const std::string_view path) -> cme::Asset;\n"
+                "    auto try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool>;\n"
+                "    auto exists(const std::string_view path) noexcept -> bool;\n"
+                "}\n")
+            string(APPEND CME_CXX_MODULE_IMPLEMENTATION_STRING
+                "\n"
+                "${CME_FROZEN_STRING}"
+                "    };\n"
+                "}\n"
+                "\n"
+                "namespace ${CME_NAME} {\n"
+                "    auto load(const std::string_view path) -> cme::Asset {\n"
+                "        return detail::asset_map.at(path);\n"
+                "    }\n"
+                "    auto try_load(const std::string_view path) noexcept -> std::pair<cme::Asset, bool> {\n"
+                "        auto it = detail::asset_map.find(path);\n"
+                "        if (it == detail::asset_map.cend()) return {{}, false};\n"
+                "        else return { it->second, true };\n"
+                "    }\n"
+                "    auto exists(const std::string_view path) noexcept -> bool {\n"
+                "        return detail::asset_map.contains(path);\n"
+                "    }\n"
+                "}\n")
+            file(WRITE ${CME_CXX_MODULE_FILE} "${CME_CXX_MODULE_STRING}")
+            file(WRITE ${CME_CXX_MODULE_IMPLEMENTATION_FILE} "${CME_CXX_MODULE_IMPLEMENTATION_STRING}")
+        endif()
     endif()
 endblock()
