@@ -23,7 +23,7 @@ cme_create_library(
     STATIC # [STATIC, SHARED, INTERFACE, CONSTEXPR] # choose one
     CXX    # [C, CXX, CXX_MODULE]                   # choose one
     BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")  # directory containing all your assets
-    FILES "file/a.txt" "file/b.png"                 # optional to select only specific files
+    FILES "subfolder/stuff.txt" "subfolder/morestuff.txt" # optional: embed specific files only
 # asset library target will be cme:: and the name you have chosen
 target_link_libraries(${your_library} PRIVATE cme::assets)
 ```
@@ -49,7 +49,6 @@ int main() {
 ```c
 #include "cme/assets.h"
 int main() {
-    // "assets" used as the asset library name
     // asset in this example is: "subfolder/stuff.txt"
     uint8_t* data = subfolder_stuff_txt;
     uint64_t size = subfolder_stuff_txt_size;
