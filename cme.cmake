@@ -157,10 +157,17 @@ function(cme_create_library CME_NAME)
         # use frozen for perfect hashing
         find_package(frozen QUIET)
         if (NOT frozen_FOUND)
+            if (CME_CXX_MODULE AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 15))
+                # gcc15 modules have issues with accessing "static constexpr" members
+                # and will error out about leaking TU-local members
+                set(CME_FROZEN_GIT_URL "https://github.com/M2-TE/frozen.git")
+            else()
+                set(CME_FROZEN_GIT_URL "https://github.com/serge-sans-paille/frozen.git")
+            endif()
             include(FetchContent)
             FetchContent_Declare(frozen
-                GIT_REPOSITORY "https://github.com/M2-TE/frozen.git"
-                GIT_TAG "9d2667d46cb1cc6bb2cf5f25b2a42074d4c485ee"
+                GIT_REPOSITORY ${CME_FROZEN_GIT_URL}
+                GIT_TAG "master"
                 GIT_SHALLOW ON
                 SOURCE_SUBDIR "disabled")
             FetchContent_MakeAvailable(frozen)
