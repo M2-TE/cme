@@ -44,15 +44,23 @@ function(cme_create_library CME_NAME)
         message(FATAL_ERROR "CME asset library ${CME_NAME} can only be one of: C, CXX or CXX_MODULE")
     elseif (CME_C)
         set(CME_LANGUAGE C)
+        set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
+        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
     elseif (CME_CXX)
         set(CME_LANGUAGE CXX)
+        set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
+        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
     elseif (CME_CXX_MODULE)
         if (CMAKE_VERSION LESS 3.28)
             message(FATAL_ERROR "CME asset library ${CME_NAME} with CXX_MODULE requires CMake 3.28 or higher")
         endif()
         set(CME_LANGUAGE CXX_MODULE)
+        set(CME_HEADER_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cppm")
+        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
     else()
         set(CME_LANGUAGE CXX) # default
+        set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
+        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
     endif()
 
     # Arg: asset files
@@ -85,60 +93,44 @@ function(cme_create_library CME_NAME)
         -D CME_BASE_DIR="${CME_BASE_DIR}"
         ${CME_EXPLICIT_FILE_PARAM}
         -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cme.cmake")
-    if (CME_C)
-        set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
-        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
-
+    if (CME_INTERFACE OR CME_CONSTEXPR)
+        # INTERFACE library
         add_custom_command(
-            OUTPUT  ${CME_HEADER_FILE} ${CME_SOURCE_FILE}
+            OUTPUT  ${CME_HEADER_FILE}
             DEPENDS ${CME_FILES}
             COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
-            COMMENT "Generating C asset library cme::${CME_NAME}"
+            COMMENT "Generating ${CME_LANGUAGE} asset library cme::${CME_NAME}"
             ${CME_CODEGEN_ARG})
-
-        add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
-    elseif (CME_CXX)
-        set(CME_HEADER_FILE "${CME_INCLUDE_DIR}/cme/${CME_NAME}.hpp")
-        set(CME_SOURCE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
-
-        add_custom_command(
-            OUTPUT  ${CME_HEADER_FILE} ${CME_SOURCE_FILE}
-            DEPENDS ${CME_FILES}
-            COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
-            COMMENT "Generating C++ asset library cme::${CME_NAME}"
-            ${CME_CODEGEN_ARG})
-
-        add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
-    elseif (CME_CXX_MODULE)
-        set(CME_CXX_MODULE_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cppm")
-        set(CME_CXX_MODULE_IMPLEMENTATION_FILE "${CME_SOURCES_DIR}/cme_${CME_NAME}.cpp")
-
-        add_custom_command(
-            OUTPUT  ${CME_CXX_MODULE_FILE} ${CME_CXX_MODULE_IMPLEMENTATION_FILE}
-            DEPENDS ${CME_FILES}
-            COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
-            COMMENT "Generating C++20-Module asset library cme::${CME_NAME}"
-            ${CME_CODEGEN_ARG})
-
-        if (CME_INTERFACE OR CME_CONSTEXPR)
+        # module libraries cannot be INTERFACE
+        if (CME_CXX_MODULE)
             add_library(cme_${CME_NAME} OBJECT)
+            set(CME_LIBRARY_SCOPE PRIVATE)
+            set(CME_INCLUDE_SCOPE PUBLIC)
         else()
-            add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_CXX_MODULE_IMPLEMENTATION_FILE})
+            add_library(cme_${CME_NAME} INTERFACE ${CME_HEADER_FILE})
+            set(CME_LIBRARY_SCOPE INTERFACE)
+            set(CME_INCLUDE_SCOPE INTERFACE)
         endif()
+    else()
+        # STATIC or SHARED library
+        add_custom_command(
+            OUTPUT  ${CME_HEADER_FILE} ${CME_SOURCE_FILE}
+            DEPENDS ${CME_FILES}
+            COMMAND ${CMAKE_COMMAND} ${CME_PARAMS}
+            COMMENT "Generating ${CME_LANGUAGE} asset library cme::${CME_NAME}"
+            ${CME_CODEGEN_ARG})
+        add_library(cme_${CME_NAME} ${CME_TYPE} ${CME_SOURCE_FILE})
+        set(CME_LIBRARY_SCOPE PRIVATE)
+        set(CME_INCLUDE_SCOPE PUBLIC)
+    endif()
+
+    # module files need to be added as a file set
+    if (CME_CXX_MODULE)
         target_sources(cme_${CME_NAME} PUBLIC
             FILE_SET cxx_module_file
             TYPE CXX_MODULES
             BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}
-            FILES ${CME_CXX_MODULE_FILE})
-    endif()
-
-    # scope needs to be INTERFACE when INTERFACE/CONSTEXPR is used
-    if (CME_INTERFACE OR CME_CONSTEXPR)
-        set(CME_LIBRARY_SCOPE INTERFACE)
-        set(CME_INCLUDE_SCOPE INTERFACE)
-    else()
-        set(CME_LIBRARY_SCOPE PRIVATE)
-        set(CME_INCLUDE_SCOPE PUBLIC)
+            FILES ${CME_HEADER_FILE})
     endif()
 
     # target settings
@@ -293,8 +285,8 @@ block()
         # cme_{name}.cpp
         string(APPEND CME_CPP_FILE_STRING
             "#include <string_view>\n"
-            "#include <frozen/unordered_map.h>\n"
             "#include <frozen/string.h>\n"
+            "#include <frozen/unordered_map.h>\n"
             "#include <cme/detail/asset.hpp>\n"
             "\n"
             "namespace ${CME_NAME} {\n"
@@ -314,10 +306,10 @@ block()
 
             # add definition to C++ source
             string(APPEND CME_CPP_FILE_STRING
-                "        static constexpr uint8_t  ${ASSET_NAME}[] = {\n"
+                "        constexpr uint8_t  ${ASSET_NAME}[] = {\n"
                 "            #embed \"${ASSET_PATH_FULL}\"\n"
                 "        };\n"
-                "        static constexpr uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
+                "        constexpr uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
         endforeach()
 
         # build lookup map in cme_{name}.cpp
@@ -392,12 +384,12 @@ block()
             string(APPEND CME_CXX_MODULE_STRING
                 "module;\n"
                 "#include <string_view>\n"
-                "#include <frozen/unordered_map.h>\n"
                 "#include <frozen/string.h>\n"
+                "#include <frozen/unordered_map.h>\n"
                 "#include <cme/detail/asset.hpp>\n"
                 "export module cme.${CME_NAME};\n"
                 "\n"
-                "namespace ${CME_NAME}::detail {\n")
+                "export namespace ${CME_NAME}::detail {\n")
         else()
             # cme_{name}.cppm
             string(APPEND CME_CXX_MODULE_STRING
@@ -411,8 +403,8 @@ block()
             string(APPEND CME_CXX_MODULE_IMPLEMENTATION_STRING
                 "module;\n"
                 "#include <string_view>\n"
-                "#include <frozen/unordered_map.h>\n"
                 "#include <frozen/string.h>\n"
+                "#include <frozen/unordered_map.h>\n"
                 "#include <cme/detail/asset.hpp>\n"
                 "module cme.${CME_NAME};\n"
                 "\n"
@@ -428,7 +420,7 @@ block()
 
         list(LENGTH CME_FILES CME_ASSET_FILES_COUNT)
         string(APPEND CME_FROZEN_STRING
-            "    frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
+            "    constexpr frozen::unordered_map<frozen::string, cme::Asset, ${CME_ASSET_FILES_COUNT}> asset_map = {\n")
         foreach (ASSET_PATH_FULL ${CME_FILES})
             # get shortened path relative to shader directory root
             cmake_path(RELATIVE_PATH ASSET_PATH_FULL BASE_DIRECTORY ${CME_BASE_DIR} OUTPUT_VARIABLE ASSET_PATH_RELATIVE)
@@ -438,17 +430,17 @@ block()
             if (CME_TYPE STREQUAL "INTERFACE")
                 # add definition to C++ module
                 string(APPEND CME_CXX_MODULE_STRING
-                    "    uint8_t  ${ASSET_NAME}[] = {\n"
+                    "    constexpr uint8_t  ${ASSET_NAME}[] = {\n"
                     "        #embed \"${ASSET_PATH_FULL}\"\n"
                     "    };\n"
-                    "    uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
+                    "    constexpr uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
             else()
                 # add definition to C++ module implementation unit
                 string(APPEND CME_CXX_MODULE_IMPLEMENTATION_STRING
-                    "    uint8_t  ${ASSET_NAME}[] = {\n"
+                    "    constexpr uint8_t  ${ASSET_NAME}[] = {\n"
                     "        #embed \"${ASSET_PATH_FULL}\"\n"
                     "    };\n"
-                    "    uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
+                    "    constexpr uint64_t ${ASSET_NAME}_size = sizeof ${ASSET_NAME};\n")
             endif()
 
             # add lookup entry to frozen hashmap
