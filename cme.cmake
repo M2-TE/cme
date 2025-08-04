@@ -159,8 +159,8 @@ function(cme_create_library CME_NAME)
         if (NOT frozen_FOUND)
             include(FetchContent)
             FetchContent_Declare(frozen
-                GIT_REPOSITORY "https://github.com/serge-sans-paille/frozen.git"
-                GIT_TAG "1.2.0"
+                GIT_REPOSITORY "https://github.com/M2-TE/frozen.git"
+                GIT_TAG "9d2667d46cb1cc6bb2cf5f25b2a42074d4c485ee"
                 GIT_SHALLOW ON
                 SOURCE_SUBDIR "disabled")
             FetchContent_MakeAvailable(frozen)
@@ -389,6 +389,12 @@ block()
                 "#include <cme/detail/asset.hpp>\n"
                 "export module cme.${CME_NAME};\n"
                 "\n"
+                "export namespace frozen::bits {\n"
+                "    template struct frozen::bits::pmh_buckets<1>;\n"
+                "    template struct frozen::bits::pmh_buckets<2>;\n"
+                "    template struct frozen::bits::pmh_buckets<3>;\n"
+                "    template struct frozen::bits::pmh_buckets<4>;\n"
+                "}\n"
                 "export namespace ${CME_NAME}::detail {\n")
         else()
             # cme_{name}.cppm
@@ -456,6 +462,7 @@ block()
                 "    };\n"
                 "}\n"
                 "\n"
+                
                 "export namespace ${CME_NAME} {\n"
                 "    auto constexpr load(const std::string_view path) -> cme::Asset {\n"
                 "        return detail::asset_map.at(path);\n"
