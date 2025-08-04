@@ -20,9 +20,10 @@ FetchContent_MakeAvailable(cme)
 
 cme_create_library(
     assets # name of your asset library (affects CMake target name and C++ namespace)
-    STATIC # [STATIC, SHARED] # may only choose one, omit when using CONSTEXPR
-    CXX    # [C, CXX]         # can use both simultaneously, CXX by default if omitted
-    BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets") # directory containing all your assets
+    STATIC # [STATIC, SHARED, INTERFACE, CONSTEXPR] # choose one
+    CXX    # [C, CXX, CXX_MODULE]                   # choose one
+    BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")  # directory containing all your assets
+    FILES "file/a.txt" "file/b.png"                 # optional to select only specific files
 # asset library target will be cme:: and the name you have chosen
 target_link_libraries(${your_library} PRIVATE cme::assets)
 ```
