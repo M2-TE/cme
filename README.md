@@ -14,7 +14,7 @@ Works with `gcc 15+` and `Clang 19+` (`Clang 20+` for C++20-modules), earlier co
 include(FetchContent)
 FetchContent_Declare(cme
     GIT_REPOSITORY "https://github.com/M2-TE/cme.git"
-    GIT_TAG "v1.2.0"
+    GIT_TAG "v1.2.1"
     GIT_SHALLOW ON)
 FetchContent_MakeAvailable(cme)
 
