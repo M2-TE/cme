@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
 
-# set up the locations for generated files
-set(CME_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/src")
-set(CME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/include")
-
 # main function to create a new asset library with <default> args
 # OPTIONAL [<STATIC>, SHARED, INTERFACE/CONSTEXPR]
 # OPTIONAL [C, <CXX>, CXX_MODULE]
@@ -14,6 +10,10 @@ function(cme_create_library CME_NAME)
     set(args_single BASE_DIR)
     set(args_multi  FILES)
     cmake_parse_arguments(CME "${args_option}" "${args_single}" "${args_multi}" "${ARGN}")
+
+    # set up the locations for generated files
+    set(CME_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/src")
+    set(CME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/include")
 
     # CME_* arg error handling
     if (DEFINED CME_UNPARSED_ARGUMENTS)
@@ -182,6 +182,10 @@ endfunction()
 
 # isolated code generator block
 block()
+    # set up the locations for generated files
+    set(CME_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/src")
+    set(CME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cme/include")
+
     if     (CME_RUN_GENERATOR AND CME_LANGUAGE STREQUAL C)
         set(CME_C_FILE     "${CME_SOURCES_DIR}/cme_${CME_NAME}.c")
         set(CME_H_FILE     "${CME_INCLUDE_DIR}/cme/${CME_NAME}.h")
