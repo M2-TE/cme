@@ -400,12 +400,10 @@ block()
                 "#include <cme/detail/asset.hpp>\n"
                 "export module cme.${CME_NAME};\n"
                 "\n"
-                "export namespace frozen::bits {\n"
-                "    template struct frozen::bits::pmh_buckets<1>;\n"
-                "    template struct frozen::bits::pmh_buckets<2>;\n"
-                "    template struct frozen::bits::pmh_buckets<3>;\n"
-                "    template struct frozen::bits::pmh_buckets<4>;\n"
+                "export namespace cme {\n"
+                "   using cme::Asset;\n"
                 "}\n"
+                "\n"
                 "export namespace ${CME_NAME}::detail {\n")
         else()
             # cme_{name}.cppm
@@ -414,6 +412,10 @@ block()
                 "#include <string_view>\n"
                 "#include <cme/detail/asset.hpp>\n"
                 "export module cme.${CME_NAME};\n"
+                "\n"
+                "export namespace cme {\n"
+                "   using cme::Asset;\n"
+                "}\n"
                 "\n")
 
             # cme_{name}.cpp
