@@ -138,20 +138,25 @@ function(cme_create_library CME_NAME)
         # enforce C23 for #embed
         target_compile_features(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} c_std_23)
     elseif (CME_CXX OR CME_CXX_MODULE)
+
+        # cxx modules need to enforce their CXX standard on linking targets
         if (CME_CXX_MODULE)
-            # enforce C++20 for modules
-            target_compile_features(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} cxx_std_20)
+            set(CME_SCOPE ${CME_INCLUDE_SCOPE})
             set_target_properties(cme_${CME_NAME} PROPERTIES CXX_SCAN_FOR_MODULES ON)
         else()
-            # enforce C++14 for frozen
-            target_compile_features(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} cxx_std_14)
+            set(CME_SCOPE ${CME_LIBRARY_SCOPE})
         endif()
 
-        # suppress warnings about #embed being a C23 extension
+        # embed has different requirements across compilers
         if     (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-            target_compile_options(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} "/W0") # TODO: there should be a specific flag for it
+            target_compile_features(cme_${CME_NAME} ${CME_SCOPE} cxx_std_23)
+            target_compile_options(cme_${CME_NAME} ${CME_SCOPE} "/W0") # TODO: there should be a specific flag for it
+        elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_compile_features(cme_${CME_NAME} ${CME_SCOPE} cxx_std_26)
         elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-            target_compile_options(cme_${CME_NAME} ${CME_LIBRARY_SCOPE} "-Wno-c23-extensions")
+            #embed is currently just a C++23 extension for Clang
+            target_compile_features(cme_${CME_NAME} ${CME_SCOPE} cxx_std_23)
+            target_compile_options(cme_${CME_NAME} ${CME_SCOPE} "-Wno-c23-extensions")
         endif()
 
         # use frozen for perfect hashing

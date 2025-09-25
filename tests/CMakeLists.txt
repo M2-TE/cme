@@ -1,8 +1,18 @@
 cmake_minimum_required(VERSION 3.25)
 project(cme LANGUAGES C CXX)
 
+if     (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options("-/W4" "/WX")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options("-Wall" "-Wextra" "-Wpedantic" "-Werror")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    #embed is currently a C++23 extension for Clang
+    add_compile_options("-Wall" "-Wextra" "-Wpedantic" "-Werror")
+endif()
+
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cme.cmake")
 set(BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
+
 
 if (CME_BUILD_TESTS_C)
     # implicitly add all files within BASE_DIR
