@@ -149,8 +149,8 @@ function(cme_create_library CME_NAME)
 
         # embed has different requirements across compilers
         if     (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-            target_compile_features(cme_${CME_NAME} ${CME_SCOPE} cxx_std_23)
-            target_compile_options(cme_${CME_NAME} ${CME_SCOPE} "/W0") # TODO: there should be a specific flag for it
+            # its not yet implemented
+            target_compile_features(cme_${CME_NAME} ${CME_SCOPE} cxx_std_26)
         elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             target_compile_features(cme_${CME_NAME} ${CME_SCOPE} cxx_std_26)
         elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
