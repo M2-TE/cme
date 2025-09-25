@@ -1,8 +1,19 @@
 cmake_minimum_required(VERSION 3.25)
 project(cme LANGUAGES C CXX)
 
+if     (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options("-/W4" "/WX")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options("-Wall" "-Wextra" "-Wpedantic" "-Werror")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    #embed is currently a C++23 extension for Clang
+    add_compile_options("-Wall" "-Wextra" "-Wpedantic" "-Werror")
+endif()
+
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cme.cmake")
 set(BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_CXX_STANDARD 23)
 
 if (CME_BUILD_TESTS_C)
     # implicitly add all files within BASE_DIR
@@ -41,13 +52,11 @@ elseif (CME_BUILD_TESTS_CXX_MODULE)
     cme_create_library(cxx_module_assets STATIC CXX_MODULE BASE_DIR "${BASE_DIR}")
     add_executable(test_cpp_module "test_module.cpp")
     target_link_libraries(test_cpp_module PRIVATE cme::cxx_module_assets)
-    target_compile_features(test_cpp_module PRIVATE cxx_std_20)
     set_target_properties(test_cpp_module PROPERTIES CXX_SCAN_FOR_MODULES ON)
 
     # test the C++20-Module as an INTERFACE library
     cme_create_library(cxx_module_assets_constexpr INTERFACE CXX_MODULE BASE_DIR "${BASE_DIR}")
     add_executable(test_cpp_module_constexpr "test_module_constexpr.cpp")
     target_link_libraries(test_cpp_module_constexpr PRIVATE cme::cxx_module_assets_constexpr)
-    target_compile_features(test_cpp_module_constexpr PRIVATE cxx_std_20)
     set_target_properties(test_cpp_module_constexpr PROPERTIES CXX_SCAN_FOR_MODULES ON)
 endif()
